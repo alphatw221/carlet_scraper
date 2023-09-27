@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "carlet-scraper"
+version = "0.1.0"
+description = ""
+authors = ["asdf50003206 <asdf500032061@gmail.com>"]
+readme = "README.md"
+packages = [{include = "carlet_scraper"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+selenium = "^4.12.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
