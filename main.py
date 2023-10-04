@@ -143,7 +143,7 @@ def liqui_moly_scraper(browser:webdriver.Chrome, vehicle_make, vehicle_model:str
 
 
 
-def engine_processor(vehicle_brand, vehicle_model, vehicle_type, panel):
+def engine_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
     try:
         title = panel.find_element(By.CLASS_NAME,'panel-title')
 
@@ -186,6 +186,17 @@ def engine_processor(vehicle_brand, vehicle_model, vehicle_type, panel):
     print(case_interval)
     print(case_capacity)
     print('--------------------')
+    
+    with db.liqui_moly.Session() as session:
+        engine = session.query(db.liqui_moly.car.Engine).filter_by(car_id = car.id, code=engine_code).first()
+        if not engine:
+            engine = db.liqui_moly.car.Engine(car_id=car.id, code=engine_code, change_interval=f'{case_use}-{case_interval}', capacity=case_capacity)
+            session.add(engine)
+            session.commit()
+        else:
+            engine.change_interval = f'{case_use}-{case_interval}'
+            engine.capacity = case_capacity
+            session.commit()
 
     time.sleep(1)
 
@@ -229,6 +240,22 @@ def main():
 
                 vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
                 vehicle_type_select.select_by_visible_text(vehicle_type)
+
+
+                
+                with db.liqui_moly.Session() as session:
+                    session.expire_on_commit=False
+                    
+                    car = session.query(db.liqui_moly.car.Car).filter_by(
+                        make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type).first()
+                    if not car:
+                        car = db.liqui_moly.car.Car(make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type)
+                        session.add(car)
+                        session.commit()
+
+                    session.expunge(car)
+                    db.liqui_moly.make_transient(car)
+
                 time.sleep(15)
 
                 reco_accordion = browser.find_element(By.ID, "reco-accordion")
@@ -264,7 +291,7 @@ def main():
                     # time.sleep(1)
 
                     
-                    engine_processor(vehicle_brand, vehicle_model, vehicle_type,panel)
+                    engine_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
 
 
 

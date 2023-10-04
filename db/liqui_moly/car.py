@@ -40,6 +40,11 @@ class Car(Base):
     model: Mapped[str] = mapped_column(String(128))
     sub_model: Mapped[str] = mapped_column(String(255))
 
+    engines = relationship('Engine', back_populates='car')
+    transmissions = relationship('Transmission', back_populates='car')
+    hydraulic_brakes = relationship('HydraulicBrake', back_populates='car')
+    power_steerings = relationship('PowerSteering', back_populates='car')
+    cooling_systems = relationship('CoolingSystem', back_populates='car')
 
 
 class Engine(Base):
@@ -49,11 +54,11 @@ class Engine(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     code:Mapped[str] = mapped_column(String(32), nullable=True)
-    change_interval: Mapped[str] = mapped_column(String(32))
-    capacity: Mapped[str] = mapped_column(String(32))
-    viscosity: Mapped[str] = mapped_column(String(255))
+    change_interval: Mapped[str] = mapped_column(String(255),  nullable=True)
+    capacity: Mapped[str] = mapped_column(String(255),  nullable=True)
+    viscosity: Mapped[str] = mapped_column(String(255),  nullable=True)
 
-    car_id: Mapped[int] = mapped_column(ForeignKey("car.id"))
+    car_id: Mapped[int] = mapped_column(ForeignKey("car.id"), nullable=True)
     car: Mapped["Car"] = relationship(back_populates="engines")
 
 class Transmission(Base):
@@ -63,12 +68,12 @@ class Transmission(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     code:Mapped[str] = mapped_column(String(32), nullable=True)
-    change_interval: Mapped[str] = mapped_column(String(32))
-    capacity: Mapped[str] = mapped_column(String(32))
-    viscosity: Mapped[str] = mapped_column(String(255))
+    change_interval: Mapped[str] = mapped_column(String(255), nullable=True)
+    capacity: Mapped[str] = mapped_column(String(255), nullable=True)
+    viscosity: Mapped[str] = mapped_column(String(255), nullable=True)
 
     car_id: Mapped[int] = mapped_column(ForeignKey("car.id"))
-    car: Mapped["Car"] = relationship(back_populates="engines")
+    car: Mapped["Car"] = relationship(back_populates="transmissions")
 
 
 
@@ -84,7 +89,7 @@ class HydraulicBrake(Base):
     dot: Mapped[str] = mapped_column(String(128))
 
     car_id: Mapped[int] = mapped_column(ForeignKey("car.id"))
-    car: Mapped["Car"] = relationship(back_populates="engines")
+    car: Mapped["Car"] = relationship(back_populates="hydraulic_brakes")
 
 
 class PowerSteering(Base):
@@ -99,7 +104,7 @@ class PowerSteering(Base):
     atf: Mapped[str] = mapped_column(String(128))
 
     car_id: Mapped[int] = mapped_column(ForeignKey("car.id"))
-    car: Mapped["Car"] = relationship(back_populates="engines")
+    car: Mapped["Car"] = relationship(back_populates="power_steerings")
 
 
 class CoolingSystem(Base):
@@ -112,6 +117,6 @@ class CoolingSystem(Base):
     capacity: Mapped[str] = mapped_column(String(32))
 
     car_id: Mapped[int] = mapped_column(ForeignKey("car.id"))
-    car: Mapped["Car"] = relationship(back_populates="engines")
+    car: Mapped["Car"] = relationship(back_populates="cooling_systems")
 
 
