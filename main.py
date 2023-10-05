@@ -328,7 +328,7 @@ def main():
 
     while True:
         try:
-            previous_make = 'BMW (EU)'
+            previous_make = None
             previous_model = None
             previous_sub_model = None
             
@@ -337,17 +337,9 @@ def main():
                 if previous_car:
                     previous_make, previous_model, previous_sub_model = previous_car.make, previous_car.model, previous_car.sub_model
 
-            
-
-
             browser = init_browser()
-        
-
-
-
 
             vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
-            # vehicle_brands = [op.text for op in vehicle_brand_select.options]
             vehicle_brands = ['','BMW (EU)', 'Audi (EU)', 'Ford (EU)', 'Hyundia (EU)', 'Honda (JAP)',
                             'INFINITI (EU)', 'Jeep (EU)', 'Kia (EU)', 'Land Rover (EU)', 'Lexus (EU)', 'Maserati', 
                             'Mazda (JAP)', 'Mercedes-Benz (EU)', 'Mitsubishi (JAP)', 'Nissan (EU)', 'Porsche (EU)', 
@@ -361,7 +353,7 @@ def main():
             previous_make = ''
 
             for vehicle_brand in vehicle_brands[i:]:
-                # print('.',vehicle_brand)
+                
                 while True:
                     try:
                         vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
@@ -382,7 +374,7 @@ def main():
                 previous_model = ''
 
                 for vehicle_model in vehicle_models[j:]:
-                    # print('..',vehicle_model)
+
                     while True:
                         try:
                             vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
@@ -414,9 +406,6 @@ def main():
                                 print(traceback.format_exc())
                                 time.sleep(5)
 
-                        
-
-                        
                         with db.liqui_moly.Session() as session:
                             session.expire_on_commit=False
                             
@@ -435,33 +424,17 @@ def main():
                             print(vehicle_model)
                             print(vehicle_type)
                             print('*******')
-            
-                        time.sleep(15)
 
-                        reco_accordion = browser.find_element(By.ID, "reco-accordion")
-                        # titles = reco_accordion.find_elements(By.CLASS_NAME,'panel-title')
-
-                        # for title in titles:
-                        #     print(title.text)
-
-                        # # headings = reco_accordion.find_elements(By.CSS_SELECTOR,'panel-heading')
-                        # headings = reco_accordion.find_elements(By.XPATH,'.//div[@class="panel-heading collapsed"]')
-
-                        # for heading in headings:
-                        #     browser.execute_script("arguments[0].click();", heading)
-                        #     time.sleep(1)
-
-                        panels = reco_accordion.find_elements(By.XPATH,'./*')
+                        while True:
+                            try:
+                                reco_accordion = browser.find_element(By.ID, "reco-accordion")
+                                panels = reco_accordion.find_elements(By.XPATH,'./*')
+                                break
+                            except:
+                                time.sleep(5)
+                        time.sleep(5)
+                        
                         for panel in panels:
-
-
-                            # try:
-                            #     title = panel.find_element(By.CLASS_NAME,'panel-title')
-                            #     print(title.text)
-                            # except Exception:
-                            #     continue
-
-                            
 
                             try:
                                 heading = panel.find_element(By.XPATH,'.//div[@class="panel-heading collapsed"]')
@@ -469,7 +442,6 @@ def main():
                             except Exception:
                                 pass
                             time.sleep(1)
-
                             
                             engine_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
                             differential_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
