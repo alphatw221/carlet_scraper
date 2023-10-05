@@ -13,7 +13,7 @@ import selenium
 
 import db
 import re
-
+import traceback
 # import concurrent.futures
 
 import threading
@@ -200,101 +200,283 @@ def engine_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
 
     time.sleep(1)
 
+
+
+def transmission_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
+    try:
+        title = panel.find_element(By.CLASS_NAME,'panel-title')
+
+    except Exception:
+        return
+
+
+
+    if 'Transmission' not in title.text:
+         return
+    
+    text = title.text
+
+    if 'Transmission,' in text:
+        text = text.replace('Transmission,','')
+
+    elif 'Transmission' in text:
+        text = text.replace('Transmission','')
+
+
+    transmission_code = text.strip()
+
+
+    case_use, case_interval, case_capacity = '', '',''
+
+    try:
+        case_use = panel.find_element(By.XPATH,'.//div[@class="case use"]').text
+    except Exception:
+        pass
+    try:
+        case_interval = panel.find_element(By.XPATH,'.//div[@class="case interval"]').text
+    except Exception:
+        pass
+    try:
+        case_capacity = panel.find_element(By.XPATH,'.//div[@class="case capacity"]').text
+    except Exception:
+        pass
+
+    print('-------Transmission-------')
+    print(transmission_code)
+    print(case_use)
+    print(case_interval)
+    print(case_capacity)
+    print('--------------------')
+    
+    with db.liqui_moly.Session() as session:
+        transmission = session.query(db.liqui_moly.car.Transmission).filter_by(car_id = car.id, code=transmission_code).first()
+        if not transmission:
+            transmission = db.liqui_moly.car.Transmission(car_id=car.id, code=transmission_code, change_interval=f'{case_use}-{case_interval}', capacity=case_capacity)
+            session.add(transmission)
+            session.commit()
+        else:
+            transmission.change_interval = f'{case_use}-{case_interval}'
+            transmission.capacity = case_capacity
+            session.commit()
+
+    time.sleep(1)
+
+
+
+def differential_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
+    try:
+        title = panel.find_element(By.CLASS_NAME,'panel-title')
+
+    except Exception:
+        return
+
+
+
+    if 'Differential' not in title.text:
+         return
+    
+    text = title.text
+
+    if 'Differential,' in text:
+        text = text.replace('Differential,','')
+
+    elif 'Differential' in text:
+        text = text.replace('Differential','')
+
+
+    differential_code = text.strip()
+
+
+    case_use, case_interval, case_capacity = '', '',''
+
+    try:
+        case_use = panel.find_element(By.XPATH,'.//div[@class="case use"]').text
+    except Exception:
+        pass
+    try:
+        case_interval = panel.find_element(By.XPATH,'.//div[@class="case interval"]').text
+    except Exception:
+        pass
+    try:
+        case_capacity = panel.find_element(By.XPATH,'.//div[@class="case capacity"]').text
+    except Exception:
+        pass
+
+    print('-------Differential-------')
+    print(differential_code)
+    print(case_use)
+    print(case_interval)
+    print(case_capacity)
+    print('--------------------')
+    
+    with db.liqui_moly.Session() as session:
+        differential = session.query(db.liqui_moly.car.Differential).filter_by(car_id = car.id, code=differential_code).first()
+        if not differential:
+            differential = db.liqui_moly.car.Differential(car_id=car.id, code=differential_code, change_interval=f'{case_use}-{case_interval}', capacity=case_capacity)
+            session.add(differential)
+            session.commit()
+        else:
+            differential.change_interval = f'{case_use}-{case_interval}'
+            differential.capacity = case_capacity
+            session.commit()
+
+    time.sleep(1)
+
+
+
 def main():
 
+    while True:
+        try:
+            previous_make = 'BMW (EU)'
+            previous_model = None
+            previous_sub_model = None
+            
+            with db.liqui_moly.Session() as session:
+                previous_car = session.query(db.liqui_moly.car.Car).order_by(db.liqui_moly.car.Car.updated_at.desc()).first()
+                if previous_car:
+                    previous_make, previous_model, previous_sub_model = previous_car.make, previous_car.model, previous_car.sub_model
 
-    
-    previous_make = 'BMW (EU)'
-    previous_model = None
-    previous_sub_model = None
-    
-
-
-    browser = init_browser()
- 
-
-
-
-
-    vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
-    # vehicle_brands = [op.text for op in vehicle_brand_select.options]
-    vehicle_brands = ['','BMW (EU)']
-
-    for vehicle_brand in vehicle_brands[1:]:
-        # print('.',vehicle_brand)
-        vehicle_brand_select.select_by_visible_text(vehicle_brand)
-        time.sleep(5)   
-
-        vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
-        vehicle_models = [op.text for op in vehicle_model_select.options]
-
-        for vehicle_model in vehicle_models[1:]:
-            # print('..',vehicle_model)
-            vehicle_model_select.select_by_visible_text(vehicle_model)
-            time.sleep(5)
-
-            vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
-            vehicle_types = [op.text for op in vehicle_type_select.options]
-
-            for vehicle_type in vehicle_types[1:]:
-
-                vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
-                vehicle_type_select.select_by_visible_text(vehicle_type)
+            
 
 
-                
-                with db.liqui_moly.Session() as session:
-                    session.expire_on_commit=False
-                    
-                    car = session.query(db.liqui_moly.car.Car).filter_by(
-                        make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type).first()
-                    if not car:
-                        car = db.liqui_moly.car.Car(make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type)
-                        session.add(car)
-                        session.commit()
-
-                    session.expunge(car)
-                    db.liqui_moly.make_transient(car)
-
-                time.sleep(15)
-
-                reco_accordion = browser.find_element(By.ID, "reco-accordion")
-                # titles = reco_accordion.find_elements(By.CLASS_NAME,'panel-title')
-
-                # for title in titles:
-                #     print(title.text)
-
-                # # headings = reco_accordion.find_elements(By.CSS_SELECTOR,'panel-heading')
-                # headings = reco_accordion.find_elements(By.XPATH,'.//div[@class="panel-heading collapsed"]')
-
-                # for heading in headings:
-                #     browser.execute_script("arguments[0].click();", heading)
-                #     time.sleep(1)
-
-                panels = reco_accordion.find_elements(By.XPATH,'./*')
-                for panel in panels:
-
-
-                    # try:
-                    #     title = panel.find_element(By.CLASS_NAME,'panel-title')
-                    #     print(title.text)
-                    # except Exception:
-                    #     continue
-
-                    
-
-                    # try:
-                    #     heading = panel.find_element(By.XPATH,'.//div[@class="panel-heading collapsed"]')
-                    #     browser.execute_script("arguments[0].click();", heading)
-                    # except Exception:
-                    #     pass
-                    # time.sleep(1)
-
-                    
-                    engine_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
+            browser = init_browser()
+        
 
 
 
+
+            vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
+            # vehicle_brands = [op.text for op in vehicle_brand_select.options]
+            vehicle_brands = ['','BMW (EU)', 'Audi (EU)', 'Ford (EU)', 'Hyundia (EU)', 'Honda (JAP)',
+                            'INFINITI (EU)', 'Jeep (EU)', 'Kia (EU)', 'Land Rover (EU)', 'Lexus (EU)', 'Maserati', 
+                            'Mazda (JAP)', 'Mercedes-Benz (EU)', 'Mitsubishi (JAP)', 'Nissan (EU)', 'Porsche (EU)', 
+                            'Skoda', 'Smart', 'Subaru (JAP)', 'Suzuki', 'Tesla (EU)', 'Tesla (USA)', 'Toyota (JAP)', 
+                            'Toyota (USA / CAN)','Volkswagen (VW) (EU)','Volvo (EU)','Volvo (USA / CAN)'
+                            ]
+            try:
+                i = vehicle_brands.index(previous_make) if previous_make else 1
+            except:
+                i = 1
+            previous_make = ''
+
+            for vehicle_brand in vehicle_brands[i:]:
+                # print('.',vehicle_brand)
+                while True:
+                    try:
+                        vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
+                        vehicle_brand_select.select_by_visible_text(vehicle_brand)
+                        break
+                    except Exception as e:
+                        print(traceback.format_exc())
+                        time.sleep(5)
+                time.sleep(5)   
+
+                vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
+                vehicle_models = [op.text for op in vehicle_model_select.options]
+
+                try:
+                    j = vehicle_models.index(previous_model) if previous_model else 1
+                except:
+                    j = 1
+                previous_model = ''
+
+                for vehicle_model in vehicle_models[j:]:
+                    # print('..',vehicle_model)
+                    while True:
+                        try:
+                            vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
+                            vehicle_model_select.select_by_visible_text(vehicle_model)
+                            break
+                        except Exception as e:
+                            print(traceback.format_exc())
+                            time.sleep(5)
+                    time.sleep(5)
+
+                    vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
+                    vehicle_types = [op.text for op in vehicle_type_select.options]
+
+                    try:
+                        k = vehicle_types.index(previous_sub_model) if previous_sub_model else 1
+                    except:
+                        k = 1
+                    previous_sub_model = ''
+
+                    for vehicle_type in vehicle_types[k:]:
+
+                        while True:
+                            try:
+                                vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
+                                vehicle_type_select.select_by_visible_text(vehicle_type)
+
+                                break
+                            except Exception as e:
+                                print(traceback.format_exc())
+                                time.sleep(5)
+
+                        
+
+                        
+                        with db.liqui_moly.Session() as session:
+                            session.expire_on_commit=False
+                            
+                            car = session.query(db.liqui_moly.car.Car).filter_by(
+                                make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type).first()
+                            if not car:
+                                car = db.liqui_moly.car.Car(make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type)
+                                session.add(car)
+                                session.commit()
+
+                            session.expunge(car)
+                            db.liqui_moly.make_transient(car)
+
+                            print('**Car**')
+                            print(vehicle_brand)
+                            print(vehicle_model)
+                            print(vehicle_type)
+                            print('*******')
+            
+                        time.sleep(15)
+
+                        reco_accordion = browser.find_element(By.ID, "reco-accordion")
+                        # titles = reco_accordion.find_elements(By.CLASS_NAME,'panel-title')
+
+                        # for title in titles:
+                        #     print(title.text)
+
+                        # # headings = reco_accordion.find_elements(By.CSS_SELECTOR,'panel-heading')
+                        # headings = reco_accordion.find_elements(By.XPATH,'.//div[@class="panel-heading collapsed"]')
+
+                        # for heading in headings:
+                        #     browser.execute_script("arguments[0].click();", heading)
+                        #     time.sleep(1)
+
+                        panels = reco_accordion.find_elements(By.XPATH,'./*')
+                        for panel in panels:
+
+
+                            # try:
+                            #     title = panel.find_element(By.CLASS_NAME,'panel-title')
+                            #     print(title.text)
+                            # except Exception:
+                            #     continue
+
+                            
+
+                            try:
+                                heading = panel.find_element(By.XPATH,'.//div[@class="panel-heading collapsed"]')
+                                browser.execute_script("arguments[0].click();", heading)
+                            except Exception:
+                                pass
+                            time.sleep(1)
+
+                            
+                            engine_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
+                            differential_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
+                            transmission_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
+        except:
+            print(traceback.format_exc())
+            pass
 
 
 if __name__ == "__main__":
