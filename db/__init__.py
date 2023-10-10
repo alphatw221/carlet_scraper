@@ -1,1 +1,1 @@
-from . import liqui_moly
+from . import liqui_moly, tire_rack
