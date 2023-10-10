@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "carlet_scraper"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.8"
 selenium = "^4.12.0"
 sqlalchemy = "^2.0.21"
 alembic = "^1.12.0"
