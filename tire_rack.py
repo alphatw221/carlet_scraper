@@ -17,10 +17,20 @@ import traceback
 
 
 def init_browser():
-    browser = webdriver.Chrome()
+
+    options = webdriver.ChromeOptions()
+    # options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36")
+    # options.add_argument('--headless')
+    # options.add_argument('--disable-javascript')
+
+    browser = webdriver.Chrome(options=options)
+
+    
+
+
     browser.get("https://www.tirerack.com/content/tirerack/desktop/en/homepage.html")
    
-    time.sleep(5)
+    time.sleep(15)
     return browser
 
 def show_home_page_modal(browser:webdriver.Chrome):
@@ -29,17 +39,17 @@ def show_home_page_modal(browser:webdriver.Chrome):
 
     # responsiveInfoBox('/modalPopups/changeSearchLayer.jsp?noTrack=true','');linkTracking({linkName:'tr: home: shop other products'}); 
 
-    browser.execute_script("responsiveInfoBox('/modalPopups/changeSearchLayer.jsp?noTrack=true','');linkTracking({linkName:'tr: home: shop other products'});")
+    # browser.execute_script("responsiveInfoBox('/modalPopups/changeSearchLayer.jsp?noTrack=true','');linkTracking({linkName:'tr: home: shop other products'});")
 
-    # try:
-    #     btn = browser.find_element(By.XPATH,'//div[@id="homeHero"]//div[@class="heroButtonContainer"]/button')
-    #     print(btn)
-    #     try:
-    #         btn.click()
-    #     except :
-    #         browser.execute_script("arguments[0].click();", btn)
-    # except Exception as e:
-    #     print(e)
+    try:
+        btn = browser.find_element(By.XPATH,'//div[@id="homeHero"]//div[@class="heroButtonContainer"]/button')
+        print(btn)
+        try:
+            btn.click()
+        except :
+            browser.execute_script("arguments[0].click();", btn)
+    except Exception as e:
+        print(e)
     time.sleep(10)
 
 def show_modal(browser:webdriver.Chrome):
@@ -284,12 +294,9 @@ def main():
 def test():
     browser = init_browser()
     
-    # browser = webdriver.Safari()
-    # browser.get("https://www.tirerack.com/tires/SelectTireSize.jsp?autoMake=BMW&autoModel=323Ci&autoYear=2000&autoModClar=&perfCat=ALL")
-   
-    # time.sleep(10)
-    # show_modal(browser)
     show_home_page_modal(browser)
+
+    browser.find_element(By.ID, "vehicle-make")
 
     while True:
         pass

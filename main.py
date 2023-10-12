@@ -340,7 +340,7 @@ def main():
             browser = init_browser()
 
             vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
-            vehicle_brands = ['','BMW (EU)', 'Audi (EU)', 'Ford (EU)', 'Hyundia (EU)', 'Honda (JAP)',
+            vehicle_brands = ['','BMW (EU)', 'Audi (EU)', 'Ford (EU)', 'Hyundai (EU)', 'Honda (JAP)',
                             'INFINITI (EU)', 'Jeep (EU)', 'Kia (EU)', 'Land Rover (EU)', 'Lexus (EU)', 'Maserati', 
                             'Mazda (JAP)', 'Mercedes-Benz (EU)', 'Mitsubishi (JAP)', 'Nissan (EU)', 'Porsche (EU)', 
                             'Skoda', 'Smart', 'Subaru (JAP)', 'Suzuki', 'Tesla (EU)', 'Tesla (USA)', 'Toyota (JAP)', 
