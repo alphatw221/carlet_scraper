@@ -1,79 +1,3 @@
-var xhr = new XMLHttpRequest();
-
-// 設置請求方法和 URL
-xhr.open("GET", "https://www.tirerack.com/survey/ValidationServlet?autoMake=BMW&autoYearsNeeded=true", true);
-
-// 設置標頭
-xhr.setRequestHeader("Accept", "application/xml, text/xml, */*; q=0.01");
-xhr.setRequestHeader("Accept-Language", "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7");
-xhr.setRequestHeader("Cache-Control", "no-cache");
-xhr.setRequestHeader("Pragma", "no-cache");
-xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-
-// 設置回調函數，處理請求完成後的動作
-xhr.onreadystatechange = function () {
-    if (xhr.readyState == 4 && xhr.status == 200) {
-        // 請求成功，處理返回的數據
-        console.log(xhr.responseText);
-    }
-};
-
-// 發送請求
-xhr.send();
-
-
-
-
-
-
-var xhr = new XMLHttpRequest();
-
-// 設置請求方法和 URL
-xhr.open("GET", "https://www.tirerack.com/survey/ValidationServlet?autoMake=BMW&autoYear=2023", true);
-
-// 設置標頭
-xhr.setRequestHeader("Accept", "application/xml, text/xml, */*; q=0.01");
-xhr.setRequestHeader("Accept-Language", "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7");
-xhr.setRequestHeader("Cache-Control", "no-cache");
-xhr.setRequestHeader("Pragma", "no-cache");
-xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-
-// 設置回調函數，處理請求完成後的動作
-xhr.onreadystatechange = function () {
-    if (xhr.readyState == 4 && xhr.status == 200) {
-        // 請求成功，處理返回的數據
-        console.log(xhr.responseText);
-    }
-};
-
-// 發送請求
-xhr.send();
-
-
-
-
-var xhr = new XMLHttpRequest();
-
-// 設置請求方法和 URL
-xhr.open("GET", "https://www.tirerack.com/survey/ValidationServlet?autoMake=BMW&autoYear=2020&autoModel=330I%20xDrive%20Sedan&newDesktop=true", true);
-
-// 設置標頭
-xhr.setRequestHeader("Accept", "application/xml, text/xml, */*; q=0.01");
-xhr.setRequestHeader("Accept-Language", "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7");
-xhr.setRequestHeader("Cache-Control", "no-cache");
-xhr.setRequestHeader("Pragma", "no-cache");
-xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-
-// 設置回調函數，處理請求完成後的動作
-xhr.onreadystatechange = function () {
-    if (xhr.readyState == 4 && xhr.status == 200) {
-        // 請求成功，處理返回的數據
-        console.log(xhr.responseText);
-    }
-};
-
-// 發送請求
-xhr.send();
 
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -91,11 +15,69 @@ const getVehicleInfo = async (make, year, model)=>{
     return xhr;
 };
 
+const uploadVehicle = async (make, year, model, additional)=>{
+    const response = await fetch('http://127.0.0.1:8000/vehicle',{
+        method: 'POST',
+        headers:{
+            'Accept':'application/json',
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+            'make':make,
+            'year':year,
+            'model':model,
+            'additional':additional
+        })
+
+    });
+
+    if (!response.ok) {
+      console.log('upload vehicle error')
+      console.log(response.status)
+    }else{
+        console.log('upload successfully')
+    }
+
+}
+const getLatestVehicle = async ()=>{
+    const response = await fetch('http://127.0.0.1:8000/vehicle/latest',{
+        method: 'GET',
+        headers:{
+            'Accept':'application/json',
+            'Content-Type':'application/json'
+        },
+    });
+
+    if (!response.ok) {
+        console.log('get latest vehicle error')
+        console.log(response.status)
+        return null
+
+    }else{
+        return response.json()
+    }
+
+}
 
 const runScript =async ()=>{
-    const makes = ['BMW'];
 
-    for(var i=0;i<makes.length;i++){
+    const makes = ['BMW','Alfa Romeo', 'Aston Martin','Audi','Ford','Honda','Hyundai','Isuzu','Jaguar',
+    'Jeep','Kia','Land Rover','Lexus','Maybach','Mazda','McLaren','Mercedes-Benz','Mercedes-Maybach',
+    'MINI','Mitsubishi','Nissan','Rivian','Rolls-Royce','Saab','smart','Subaru','Suzuki','Tesla','Toyota',
+    'Volkswagen','Volvo'];
+    
+    const previousVehicle = await getLatestVehicle()
+
+    let previousMake = previousVehicle?.make||null
+    let previousYear = previousVehicle?.year||null
+    let previousModel = previousVehicle?.model||null
+    let previousAdditional = previousVehicle?.additional||null
+
+
+    const makeIndexStart = makes.indexOf(previousMake)<0? 0 : makes.indexOf(previousMake)
+    previousMake = null
+
+    for(var i=makeIndexStart;i<makes.length;i++){
         let make = makes[i]
 
         let xhr = await getVehicleInfo(make, '', '');
@@ -116,8 +98,13 @@ const runScript =async ()=>{
         for(var l=0;l<year_tags.length;l++){
             years.push(year_tags[l]?.childNodes?.[0]?.nodeValue);
         }
+        
 
-        for(var j=0;j<years.length;j++){
+        const yearIndexStart = years.indexOf(previousYear?.toString())<0? 0 : years.indexOf(previousYear?.toString())
+        previousYear = null
+
+
+        for(var j=yearIndexStart;j<years.length;j++){
             let year = years[j]
 
 
@@ -144,7 +131,11 @@ const runScript =async ()=>{
             }
             console.log(models)
 
-            for(var k=0;k<models.length;k++){
+
+            const modelIndexStart = models.indexOf(previousModel)<0? 0 : models.indexOf(previousModel)
+            previousModel = null
+
+            for(var k=modelIndexStart;k<models.length;k++){
                 let model = models[k]
 
 
@@ -159,41 +150,48 @@ const runScript =async ()=>{
                     await sleep(5000);
                     xhr = await getVehicleInfo(make, year, model);
                 } 
-                
-                
 
                 if( xhr.responseXML.getElementsByTagName("clarifiers").length){
                     let clar_tags = xhr.responseXML.getElementsByTagName("clar");
                     for(var i=0;i<clar_tags.length;i++){
                         let additional = clar_tags[i]?.childNodes?.[0]?.nodeValue;
-
                         console.log({'make':make, 'year':year, 'model':model, 'additional':additional});
+                        await uploadVehicle(make, year, model, additional)
                     }
                 }else{
-
                     console.log({'make':make, 'year':year, 'model':model, 'additional':''});
-
-
+                    await uploadVehicle(make, year, model, additional)
                 }
 
             }
-            return;
-
-
         }
-
-
 
     }
 }
 
 
-await runScript()
-
-let xhr = await getVehicleInfo('BMW', '', '');
-if (xhr.readyState != 4 || xhr.status != 200) {
-    console.log('error');
-} 
 
 
-console.log(xhr.responseXML)
+while(true){
+    try{
+        await runScript()
+    }
+    catch(e){
+        console.log('waiting...')
+        await sleep(5*60*1000)
+    }
+}
+
+// {
+// additional
+// : 
+// "Standard Tire"
+// make
+// : 
+// "BMW"
+// model
+// : 
+// "M440i Gran Coupe"
+// year
+// : 
+// "2024"}
