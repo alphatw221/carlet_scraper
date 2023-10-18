@@ -1,1 +1,1 @@
-from . import liqui_moly, tire_rack
+from . import liqui_moly, tire_rack, autofiles, paintscratch, automobiledimension

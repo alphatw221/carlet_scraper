@@ -11,7 +11,7 @@ const getVehicleInfo = async (make, year, model)=>{
     xhr.setRequestHeader("Pragma", "no-cache");
     xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
     xhr.send();
-    await sleep(5000);
+    await sleep(1000);
     return xhr;
 };
 
@@ -32,10 +32,10 @@ const uploadVehicle = async (make, year, model, additional)=>{
     });
 
     if (!response.ok) {
-      console.log('upload vehicle error')
-      console.log(response.status)
+      console.log('upload vehicle error');
+      console.log(response.status);
     }else{
-        console.log('upload successfully')
+        console.log('upload successfully');
     }
 
 }
@@ -49,12 +49,12 @@ const getLatestVehicle = async ()=>{
     });
 
     if (!response.ok) {
-        console.log('get latest vehicle error')
-        console.log(response.status)
-        return null
+        console.log('get latest vehicle error');
+        console.log(response.status);
+        return null;
 
     }else{
-        return response.json()
+        return response.json();
     }
 
 }
@@ -66,19 +66,22 @@ const runScript =async ()=>{
     'MINI','Mitsubishi','Nissan','Rivian','Rolls-Royce','Saab','smart','Subaru','Suzuki','Tesla','Toyota',
     'Volkswagen','Volvo'];
     
-    const previousVehicle = await getLatestVehicle()
+    const previousVehicle = await getLatestVehicle();
+    // const previousVehicle = {};
 
-    let previousMake = previousVehicle?.make||null
-    let previousYear = previousVehicle?.year||null
-    let previousModel = previousVehicle?.model||null
-    let previousAdditional = previousVehicle?.additional||null
+    let previousMake = previousVehicle?.make||null;
+    let previousYear = previousVehicle?.year||null;
+    let previousModel = previousVehicle?.model||null;
+    let previousAdditional = previousVehicle?.additional||null;
 
 
-    const makeIndexStart = makes.indexOf(previousMake)<0? 0 : makes.indexOf(previousMake)
-    previousMake = null
+    const makeIndexStart = makes.indexOf(previousMake)<0? 0 : makes.indexOf(previousMake);
+    previousMake = null;
 
     for(var i=makeIndexStart;i<makes.length;i++){
-        let make = makes[i]
+        let make = makes[i];
+        
+
 
         let xhr = await getVehicleInfo(make, '', '');
 
@@ -86,8 +89,8 @@ const runScript =async ()=>{
         while (xhr.readyState != 4 || xhr.status != 200) {
             // console.log(xhr.status);
             console.log(xhr.responseText);
-            console.log('error get year')
-            return
+            console.log('error get year');
+            return;
             // await sleep(5000);
             // xhr = await getVehicleInfo(make, '', '');
         } 
@@ -100,12 +103,12 @@ const runScript =async ()=>{
         }
         
 
-        const yearIndexStart = years.indexOf(previousYear?.toString())<0? 0 : years.indexOf(previousYear?.toString())
-        previousYear = null
+        const yearIndexStart = years.indexOf(previousYear?.toString())<0? 0 : years.indexOf(previousYear?.toString());
+        previousYear = null;
 
 
         for(var j=yearIndexStart;j<years.length;j++){
-            let year = years[j]
+            let year = years[j];
 
 
 
@@ -113,8 +116,8 @@ const runScript =async ()=>{
             while (xhr.readyState != 4 || xhr.status != 200) {
 
                 console.log(xhr.responseText);
-                console.log('error get model')
-                return
+                console.log('error get model');
+                return;
 
                 console.log(xhr.status);
                 console.log(xhr.responseText);
@@ -129,21 +132,21 @@ const runScript =async ()=>{
             for(var l=0;l<model_tags.length;l++){
                 models.push(model_tags[l]?.childNodes?.[0]?.nodeValue);
             }
-            console.log(models)
+            console.log(models);
 
 
-            const modelIndexStart = models.indexOf(previousModel)<0? 0 : models.indexOf(previousModel)
-            previousModel = null
+            const modelIndexStart = models.indexOf(previousModel)<0? 0 : models.indexOf(previousModel);
+            previousModel = null;
 
             for(var k=modelIndexStart;k<models.length;k++){
-                let model = models[k]
+                let model = models[k];
 
 
                 let xhr = await getVehicleInfo(make, year, model);
                 while (xhr.readyState != 4 || xhr.status != 200) {
 
-                    console.log('error get additional')
-                    return
+                    console.log('error get additional');
+                    return;
 
                     console.log(xhr.status);
                     console.log(xhr.responseText);
@@ -151,16 +154,16 @@ const runScript =async ()=>{
                     xhr = await getVehicleInfo(make, year, model);
                 } 
 
-                if( xhr.responseXML.getElementsByTagName("clarifiers").length){
+                if( xhr.responseXML.getElementsByTagName("clar").length){
                     let clar_tags = xhr.responseXML.getElementsByTagName("clar");
-                    for(var i=0;i<clar_tags.length;i++){
-                        let additional = clar_tags[i]?.childNodes?.[0]?.nodeValue;
+                    for(var m=0;m<clar_tags.length;m++){
+                        let additional = clar_tags[m]?.childNodes?.[0]?.nodeValue;
                         console.log({'make':make, 'year':year, 'model':model, 'additional':additional});
-                        await uploadVehicle(make, year, model, additional)
+                        await uploadVehicle(make, year, model, additional);
                     }
                 }else{
                     console.log({'make':make, 'year':year, 'model':model, 'additional':''});
-                    await uploadVehicle(make, year, model, additional)
+                    await uploadVehicle(make, year, model, '');
                 }
 
             }
@@ -174,11 +177,12 @@ const runScript =async ()=>{
 
 while(true){
     try{
-        await runScript()
+        await runScript();
     }
     catch(e){
-        console.log('waiting...')
-        await sleep(5*60*1000)
+        console.log(e)
+        console.log('waiting...');
+        await sleep(5*60*1000);
     }
 }
 

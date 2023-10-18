@@ -6,7 +6,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import desc, asc
 
 # 創建一個連接
-engine = create_engine('postgresql+psycopg2://postgres:kp80390254tnt0221!!@18.136.209.77/liqui_moly')
+engine = create_engine('postgresql+psycopg2://postgres:kp80390254tnt0221!!@18.136.209.77/automobiledimension')
 
 # 創建一個基礎模型類
 Base = declarative_base()

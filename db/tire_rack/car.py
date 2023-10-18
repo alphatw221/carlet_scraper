@@ -33,6 +33,8 @@ class Car(Base):
     created_at = mapped_column(DateTime, default=datetime.utcnow)
     updated_at = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    scraped_at = mapped_column(DateTime, nullable=True, default=None)
+
 class TireSize(Base):
 
     __tablename__ = "tire_size"
