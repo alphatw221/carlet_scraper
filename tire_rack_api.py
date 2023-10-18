@@ -57,7 +57,7 @@ def get_latest_vehicle():
     with db.tire_rack.Session() as session:
         session.expire_on_commit=False
 
-        previous_car = session.query(db.tire_rack.car.Car).order_by(db.tire_rack.car.Car.updated_at.desc()).first()
+        previous_car = session.query(db.tire_rack.car.Car).order_by(db.tire_rack.car.Car.created_at.desc()).first()
         session.expunge(previous_car)
         db.tire_rack.make_transient(previous_car)
 
