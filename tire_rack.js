@@ -61,11 +61,11 @@ const getLatestVehicle = async ()=>{
 
 const runScript =async ()=>{
 
-    const makes = ['Porsche', 'BMW','Alfa Romeo', 'Aston Martin','Audi','Ford','Honda','Hyundai','Isuzu','Jaguar',
-    'Jeep','Kia','Land Rover','Lexus','Maybach','Mazda','McLaren','Mercedes-Benz','Mercedes-Maybach',
-    'MINI','Mitsubishi','Nissan','Rivian','Rolls-Royce','Saab','smart','Subaru','Suzuki','Tesla','Toyota',
-    'Volkswagen','Volvo'];
-    
+    // const makes = ['Porsche', 'BMW','Alfa Romeo', 'Aston Martin','Audi','Ford','Honda','Hyundai','Isuzu','Jaguar',
+    // 'Jeep','Kia','Land Rover','Lexus','Maybach','Mazda','McLaren','Mercedes-Benz','Mercedes-Maybach',
+    // 'MINI','Mitsubishi','Nissan','Rivian','Rolls-Royce','Saab','smart','Subaru','Suzuki','Tesla','Toyota',
+    // 'Volkswagen','Volvo'];
+    const makes = ['Porsche'];
     const previousVehicle = await getLatestVehicle();
     // const previousVehicle = {};
 
