@@ -16,6 +16,9 @@ import re
 import traceback
 from datetime import datetime
 
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
 def init_browser():
 
 
@@ -29,7 +32,8 @@ def init_browser():
     # options.add_argument('--headless')
     # options.add_argument('--disable-javascript')
 
-    browser = webdriver.Chrome(options=options)
+    # browser = webdriver.Chrome(options=options)
+    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 
     return browser
