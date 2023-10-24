@@ -18,6 +18,10 @@ FROM tire_size ts JOIN car c ON ts.car_id = c.id
 WHERE ts.rear_size != '' AND c.make in ('BMW') AND c.year>2000
 GROUP BY ts.rear_size
 ORDER BY ts.rear_size
+-------------------------------------------------------
+
+SELECT DISTINCT c.make FROM car c 
+
 
 -------------------------------------------------------
 SELECT DISTINCT ts.size FROM tire_size ts JOIN car c ON ts.car_id = c.id WHERE ts.size != ''  AND c.make in ('BMW')

@@ -24,16 +24,11 @@ def init_browser():
 
 
     options = webdriver.ChromeOptions()
+    browser = webdriver.Chrome(options=options)
 
-    # options.add_experimental_option( "prefs",{'profile.managed_default_content_settings.javascript': 2})
-
-    # browser = webdriver.Chrome(options=options)
-    # options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36")
-    # options.add_argument('--headless')
-    # options.add_argument('--disable-javascript')
-
-    # browser = webdriver.Chrome(options=options)
-    browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # options.add_argument("no-sandbox")
+    # options.add_argument("--disable-extensions")
+    # browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 
     return browser
@@ -154,7 +149,7 @@ def main():
     
 
     with db.tire_rack.Session() as session:
-        cars= session.query(db.tire_rack.car.Car).filter_by(scraped_at=None).yield_per(100)
+        cars= session.query(db.tire_rack.car.Car).filter(db.tire_rack.car.Car.make.in_(['Audi', 'Lexus', 'Mercedes-Benz', 'BMW', 'Volkswagen', 'Porsche'])).filter_by(scraped_at=None).yield_per(100)
 
                               
     for car in cars:
