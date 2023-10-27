@@ -18,4 +18,7 @@ alembic -n paintscratch upgrade head
 alembic -n automobiledimension revision --autogenerate  -m "update"
 alembic -n automobiledimension upgrade head
 
+alembic -n auto_data revision --autogenerate  -m "update"
+alembic -n auto_data upgrade head
+
 
