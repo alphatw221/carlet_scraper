@@ -291,7 +291,7 @@ def main():
 
                                             property = session.query(db.auto_data.car.Property).filter_by(car_id=car.id, name=property_name).first()
                                             if not property:
-                                                property = db.auto_data.car.Property(car_id=car.id, name=property_name)
+                                                property = db.auto_data.car.Property(car_id=car.id, name=property_name, value=property_value)
                                                 session.add(property)
                                                 session.commit()
                                             else:
