@@ -194,7 +194,12 @@ def main():
                 make_name = make.get('name')
                 url = make.get('url')
 
-                model_category_browser = initModelCategoryBrowser(url)
+                try:
+                    model_category_browser = initModelCategoryBrowser(url)
+                except Exception as e:
+                    print(traceback.format_exc())
+                    continue
+                
                 model_category_links = get_model_category_links(model_category_browser)
 
                 model_categories = []
@@ -213,7 +218,12 @@ def main():
                     model_category_name = model_category.get('name')
                     url = model_category.get('url')
 
-                    model_browser = initModelBrowser(url)
+                    try:
+                        model_browser = initModelBrowser(url)
+                    except Exception as e:
+                        print(traceback.format_exc())
+                        continue
+                    
                     model_links = get_model_links(model_browser)
 
                     models = []
@@ -232,7 +242,12 @@ def main():
                         model_name = model.get('name')
                         model_url = model.get('url')
 
-                        sub_model_borwser = initSubModelBrowser(model_url)
+                        try:
+                            sub_model_borwser = initSubModelBrowser(model_url)
+                        except Exception as e:
+                            print(traceback.format_exc())
+                            continue
+
                         sub_model_links = get_sub_model_links(sub_model_borwser)
 
                         sub_models = []
@@ -253,7 +268,11 @@ def main():
                                 sub_model_name = sub_model.get('name')
                                 sub_model_link = sub_model.get('url')
 
-                                vehicle_browser = initVehicleBrowser((sub_model_link))
+                                try:
+                                    vehicle_browser = initVehicleBrowser((sub_model_link))
+                                except Exception as e:
+                                    print(traceback.format_exc())
+                                    continue
 
                                 trs = vehicle_browser.find_elements(By.XPATH,f".//table[@class='cardetailsout car2']//tr")
 
