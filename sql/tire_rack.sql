@@ -58,3 +58,23 @@ FROM engine e JOIN car c ON e.car_id = c.id
 WHERE  c.make in ('BMW (EU)', 'Lexus (EU)','Volkswagen (VW) (EU)','Volvo (EU)','Volvo (EU)','Mercedes-Benz (EU)','Audi (EU)','Porsche (EU)') 
 GROUP BY e.capacity
 ORDER BY e.capacity
+
+
+
+-------------------------------------------------------auto_data
+
+SELECT DISTINCT c.make FROM car c 
+
+-------------------------------------------------------auto_data
+
+SELECT p.name, p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
+FROM car c JOIN property p ON p.car_id = c.id
+WHERE  c.make in ('BMW', 'Audi') AND p.name in ('Engine oil capacity')
+GROUP BY p.name, p.value
+ORDER BY p.name, p.value
+
+SELECT p.name, p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
+FROM car c JOIN property p ON p.car_id = c.id
+WHERE  c.make in ('BMW', 'Audi') AND p.name in ('Tires size')
+GROUP BY p.name, p.value
+ORDER BY p.name, p.value

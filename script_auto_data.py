@@ -42,7 +42,6 @@ def init_browser():
 
 
 def get_make_links(browser:webdriver.Chrome):
-
     while True:
         try:
             make_links = browser.find_elements(By.XPATH,f".//div[@class='brands']//a[@class='marki_blok']")
@@ -161,6 +160,7 @@ def main():
 
     while True:
         try:
+            target_makes = ['Mercedes-Benz', 'Porsche' ]
 
             previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
 
@@ -168,6 +168,9 @@ def main():
                 previous_car = session.query(db.auto_data.car.Car).order_by(db.auto_data.car.Car.created_at.desc()).first()
                 if previous_car:
                     previous_make, previous_model_category, previous_model, previous_sub_model = previous_car.make, previous_car.model_category, previous_car.model, previous_car.sub_model
+
+            if previous_make and previous_make not in target_makes:
+                previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
 
             print(previous_make)
             print(previous_model_category)
@@ -180,7 +183,14 @@ def main():
             make_links = get_make_links(browser)
 
             makes = []
+
+            
+
             for make_link in make_links:
+                
+                if make_link.text not in target_makes:
+                    continue
+
                 if previous_make:
                     if make_link.text == previous_make:
                         makes.append({'name':make_link.text, 'url': make_link.get_attribute('href')})
