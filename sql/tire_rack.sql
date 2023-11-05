@@ -69,12 +69,16 @@ SELECT DISTINCT c.make FROM car c
 
 SELECT p.name, p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
 FROM car c JOIN property p ON p.car_id = c.id
-WHERE  c.make in ('BMW', 'Audi') AND p.name in ('Engine oil capacity')
+WHERE  c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') AND p.name in ('Engine oil capacity')
 GROUP BY p.name, p.value
 ORDER BY p.name, p.value
 
 SELECT p.name, p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
 FROM car c JOIN property p ON p.car_id = c.id
-WHERE  c.make in ('BMW', 'Audi') AND p.name in ('Tires size')
+WHERE  c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') AND p.name in ('Tires size')
 GROUP BY p.name, p.value
 ORDER BY p.name, p.value
+
+SELECT DISTINCT p.value FROM property p JOIN car c ON p.car_id = c.id WHERE c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') and p.value='Tires size'
+
+ORDER BY p.value

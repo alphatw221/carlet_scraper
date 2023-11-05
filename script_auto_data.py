@@ -165,7 +165,7 @@ def main():
             previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
 
             with db.auto_data.Session() as session:
-                previous_car = session.query(db.auto_data.car.Car).order_by(db.auto_data.car.Car.created_at.desc()).first()
+                previous_car = session.query(db.auto_data.car.Car).filter_by(make='Mercedes-Benz').order_by(db.auto_data.car.Car.created_at.desc()).first()
                 if previous_car:
                     previous_make, previous_model_category, previous_model, previous_sub_model = previous_car.make, previous_car.model_category, previous_car.model, previous_car.sub_model
 
