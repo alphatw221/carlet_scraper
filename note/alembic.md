@@ -22,3 +22,8 @@ alembic -n auto_data revision --autogenerate  -m "update"
 alembic -n auto_data upgrade head
 
 
+alembic -n local_carlet revision --autogenerate  -m "update"
+alembic -n local_carlet upgrade head
+
+
+sqlacodegen_v2 mysql+pymysql://root:carletcarlet@127.0.0.1:3306/carlet --outfile=./db/local_carlet/models.py
