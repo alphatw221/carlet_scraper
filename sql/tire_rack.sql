@@ -73,12 +73,20 @@ WHERE  c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') AND p.name in ('Eng
 GROUP BY p.name, p.value
 ORDER BY p.name, p.value
 
-SELECT p.name, p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
+SELECT  p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
 FROM car c JOIN property p ON p.car_id = c.id
-WHERE  c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') AND p.name in ('Tires size')
-GROUP BY p.name, p.value
-ORDER BY p.name, p.value
+WHERE  c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') AND p.name in ('Tires size') 
+GROUP BY  p.value
+ORDER BY  p.value
 
-SELECT DISTINCT p.value FROM property p JOIN car c ON p.car_id = c.id WHERE c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') and p.value='Tires size'
+
+SELECT  p.value ,unnest(array_agg(concat(c.make, '-', c.sub_model))) AS vehicle
+FROM car c JOIN property p ON p.car_id = c.id
+WHERE  c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') AND p.name in ('simplify_tire_size') AND c.start_of_perduction_year >= 2008
+GROUP BY  p.value
+ORDER BY  p.value
+
+
+SELECT DISTINCT p.value FROM property p JOIN car c ON p.car_id = c.id WHERE c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') and p.name='Tires size'
 
 ORDER BY p.value
