@@ -160,23 +160,20 @@ def main():
 
     while True:
         try:
-            target_makes = ['Mercedes-Benz', 'Porsche' ]
-
+            target_makes = ['BMW', 'Audi', 'Mercedes-Benz', 'Porsche' ]
             previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
 
-            with db.auto_data.Session() as session:
-                previous_car = session.query(db.auto_data.car.Car).filter_by(make='Mercedes-Benz').order_by(db.auto_data.car.Car.created_at.desc()).first()
-                if previous_car:
-                    previous_make, previous_model_category, previous_model, previous_sub_model = previous_car.make, previous_car.model_category, previous_car.model, previous_car.sub_model
+            # with db.auto_data.Session() as session:
+            #     previous_car = session.query(db.auto_data.car.Car).filter(db.auto_data.car.Car.make.in_(target_makes)).order_by(db.auto_data.car.Car.updated_at.desc()).first()
+            #     if previous_car:
+            #         previous_make, previous_model_category, previous_model, previous_sub_model = previous_car.make, previous_car.model_category, previous_car.model, previous_car.sub_model
 
-            if previous_make and previous_make not in target_makes:
-                previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
+            # if previous_make and previous_make not in target_makes:
+            #     previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
 
             print(previous_make)
             print(previous_model_category)
-
             print(previous_model)
-
             print(previous_sub_model)
 
             browser = init_browser()
@@ -278,6 +275,24 @@ def main():
                                 sub_model_name = sub_model.get('name')
                                 sub_model_link = sub_model.get('url')
 
+                                #re scrape vehicle which get different tire spec between front and rear side
+                                with db.auto_data.Session() as session:
+                                    car = session.query(db.auto_data.car.Car).join(db.auto_data.car.Property).filter(
+                                        db.auto_data.car.Car.make==make_name,
+                                        db.auto_data.car.Car.model_category==model_category_name,
+                                        db.auto_data.car.Car.model==model_name,
+                                        db.auto_data.car.Car.sub_model==sub_model_name,
+                                        db.auto_data.car.Property.name=='Tire size',
+                                        db.auto_data.car.Property.value.ilike('Front wheel tires')
+                                    ).first()
+
+                                    if not car:
+                                        print('vehicle which get same tire spec between front and rear side')
+                                        continue
+
+                                    print('vehicle which get different tire spec between front and rear side')
+
+
                                 try:
                                     vehicle_browser = initVehicleBrowser((sub_model_link))
                                 except Exception as e:
@@ -291,10 +306,14 @@ def main():
                                 with db.auto_data.Session() as session:
                                     session.expire_on_commit=False
                             
-
                                     car = session.query(db.auto_data.car.Car).filter_by(make=make_name, model_category=model_category_name, model=model_name, sub_model=sub_model_name).first()
+
                                     if not car:
-                                        car = db.auto_data.car.Car(make=make_name, model_category=model_category_name, model=model_name, sub_model=sub_model_name)
+                                        car = db.auto_data.car.Car(make=make_name, model_category=model_category_name, model=model_name, sub_model=sub_model_name, link=sub_model_link)
+                                        session.add(car)
+                                        session.commit()
+                                    else:
+                                        car.link = sub_model_link
                                         session.add(car)
                                         session.commit()
 
@@ -311,8 +330,10 @@ def main():
                                 for tr in trs:
                                     try:
                                         property_name = tr.find_element(By.XPATH,f"./th").text
-                                        property_value = tr.find_element(By.XPATH,f"./td").text
+                                        # property_value = tr.find_element(By.XPATH,f"./td").text
+                                        property_value = tr.find_element(By.XPATH,f"./td").get_attribute("textContent")
 
+                                        
 
 
 
@@ -361,5 +382,27 @@ def main():
 
 
 if __name__ == "__main__":
+
+    # 'BMW#i3#BMW i3#22 kWh (170 Hp) Range Extender 2013 - 2017'
+
+    # with db.auto_data.Session() as session:
+    #     rows = session.query(db.auto_data.car.Car, db.auto_data.car.Property).filter(
+    #         db.auto_data.car.Property.car_id==db.auto_data.car.Car.id,
+    #         db.auto_data.car.Car.make=='BMW',
+    #         db.auto_data.car.Car.model_category=='i3',
+    #         db.auto_data.car.Car.model=='BMW i3',
+    #         db.auto_data.car.Car.sub_model=='22 kWh (170 Hp) Range Extender 2013 - 2017',
+
+    #         db.auto_data.car.Property.name=='Tires size',
+    #         db.auto_data.car.Property.value.contains('Front wheel tires')
+    #     ).all()
+
+    #     for r in rows:
+    #         print(r[0].id)
+    #         print(r[1].name)
+    #         print(r[1].value)
+
+
+
 
     main()

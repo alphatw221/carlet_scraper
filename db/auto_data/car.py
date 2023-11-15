@@ -26,9 +26,10 @@ class Car(Base):
     model: Mapped[str] = mapped_column(String(128))
     sub_model: Mapped[str] = mapped_column(String(128))
     
+    link: Mapped[str] = mapped_column(String(255), nullable=True)
+
     start_of_perduction_year:Mapped[int] = mapped_column(Integer(), nullable=True)
     end_of_perduction_year:Mapped[int] = mapped_column(Integer(), nullable=True)
-
 
     properties = relationship('Property', back_populates='car')
 
