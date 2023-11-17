@@ -43,7 +43,7 @@ def extract_year_range(input_string):
 
 
 def reformat(match):
-    match = re.match(r'(\d{3}/\d{2})\s*+([A-Z]+)\s*(\d{2})', match)
+    match = re.match(r'(\d{3}/\d{2})\s*([A-Z]+)\s*(\d{2})', match)
 
     formatted_spec = ''
     if match:
