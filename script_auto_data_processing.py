@@ -43,7 +43,7 @@ def extract_year_range(input_string):
 
 
 def reformat(match):
-    match = re.match(r'(\d{3}/\d{2})\s+([A-Z]+\w*)\s*(\d*)', match)
+    match = re.match(r'(\d{3}/\d{2})\s*+([A-Z]+)\s*(\d{2})', match)
 
     formatted_spec = ''
     if match:
@@ -56,7 +56,7 @@ def extract_tire_sizes(input_string):
     # 使用正規表達式，匹配形如 "xxx/xx Rxx" 的格式
     # pattern = re.compile(r'\b(\d{3}/\d{2} R\d{2})\b')
 
-    pattern = re.compile(r'(\d{3}/\d{2}\s+[A-Z]+\w*\s*\d{2})')
+    pattern = re.compile(r'(\d{3}/\d{2}\s*[A-Z]+\s*\d{2})')
     matches = pattern.findall(input_string)
 
 
