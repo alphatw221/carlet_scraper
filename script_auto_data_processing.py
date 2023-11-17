@@ -113,31 +113,25 @@ def store_tire_size_data(car_id, original_tire_size, property_name):
     
 
     matches = extract_tire_sizes(original_tire_size)
-    if not matches:
+
+    for match in matches:
+        print(match)
         with db.auto_data.Session() as session:
-            _property = session.query(db.auto_data.car.Property).filter_by(car_id=car_id, name=property_name, value=None).first()
+            _property = session.query(db.auto_data.car.Property).filter_by(car_id=car_id, name=property_name, value=match).first()
             if not _property:
-                _property = db.auto_data.car.Property(car_id=car_id, name=property_name, value=None)
+                _property = db.auto_data.car.Property(car_id=car_id, name=property_name, value=match)
                 session.add(_property)
                 session.commit()
-    else:
-        for match in matches:
-            print(match)
-            with db.auto_data.Session() as session:
-                _property = session.query(db.auto_data.car.Property).filter_by(car_id=car_id, name=property_name, value=match).first()
-                if not _property:
-                    _property = db.auto_data.car.Property(car_id=car_id, name=property_name, value=match)
-                    session.add(_property)
-                    session.commit()
-            print('-------------Properties----------------')
-            print(f'Simplify {property_name} : {match}')
-            print('--------------------------------')
+        print('-------------Properties----------------')
+        print(f'Simplify {property_name} : {match}')
+        print('--------------------------------')
 
 def map_tire_size():
     
     with db.auto_data.Session() as session:
         # vehicles= session.query(db.local_carlet.models.Vehicle).filter(db.local_carlet.models.Vehicle.make.in_(target_makes)).order_by(db.local_carlet.models.Vehicle.id.asc()).limit(50)
-        properties= session.query(db.auto_data.car.Property).filter_by(name='Tires size').filter(not_(db.auto_data.car.Property.value.contains('Front wheel tires'))).yield_per(100)
+        # properties= session.query(db.auto_data.car.Property).filter_by(name='Tires size').filter(not_(db.auto_data.car.Property.value.contains('Front wheel tires'))).yield_per(100)
+        properties= session.query(db.auto_data.car.Property).filter_by(name='Tires size').filter(db.auto_data.car.Property.value.contains('Front wheel tires')).yield_per(100)
 
                               
     for property in properties:
@@ -150,28 +144,28 @@ def map_tire_size():
             print(f'Original Tire Size : {original_tire_size}')
             print('--------------------------------')
             
-            # i = original_tire_size.find('Front wheel tires')
-            # j = original_tire_size.find('Rear wheel tires')
+            i = original_tire_size.find('Front wheel tires')
+            j = original_tire_size.find('Rear wheel tires')
 
-            # original_front_tire_size = original_tire_size[i:j]
-            # original_rear_tire_size = original_tire_size[j:]
+            original_front_tire_size = original_tire_size[i:j]
+            original_rear_tire_size = original_tire_size[j:]
 
-            # store_tire_size_data(property.car_id, original_front_tire_size, SIMPLIFY_FRONT_TIRE_SIZE)
-            # store_tire_size_data(property.car_id, original_rear_tire_size, SIMPLIFY_REAR_TIRE_SIZE)
+            store_tire_size_data(property.car_id, original_front_tire_size, SIMPLIFY_FRONT_TIRE_SIZE)
+            store_tire_size_data(property.car_id, original_rear_tire_size, SIMPLIFY_REAR_TIRE_SIZE)
 
-            matches = extract_tire_sizes(original_tire_size)
+            # matches = extract_tire_sizes(original_tire_size)
    
-            for match in matches:
-                print(match)
-                with db.auto_data.Session() as session:
-                    _property = session.query(db.auto_data.car.Property).filter_by(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match).first()
-                    if not _property:
-                        _property = db.auto_data.car.Property(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match)
-                        session.add(_property)
-                        session.commit()
-                print('-------------Properties----------------')
-                print(f'Simplify Tire Size : {match}')
-                print('--------------------------------')
+            # for match in matches:
+            #     print(match)
+            #     with db.auto_data.Session() as session:
+            #         _property = session.query(db.auto_data.car.Property).filter_by(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match).first()
+            #         if not _property:
+            #             _property = db.auto_data.car.Property(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match)
+            #             session.add(_property)
+            #             session.commit()
+            #     print('-------------Properties----------------')
+            #     print(f'Simplify Tire Size : {match}')
+            #     print('--------------------------------')
         except:
             print(traceback.format_exc())
             continue
