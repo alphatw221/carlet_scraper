@@ -21,10 +21,13 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from sqlalchemy import not_
 
-SIMPLIFY_TIRE_SIZE = 'simplify_tire_size'
+# SIMPLIFY_TIRE_SIZE = 'simplify_tire_size'
+# SIMPLIFY_FRONT_TIRE_SIZE = 'simplify_front_tire_size'
+# SIMPLIFY_REAR_TIRE_SIZE = 'simplify_rear_tire_size'
 
-SIMPLIFY_FRONT_TIRE_SIZE = 'simplify_front_tire_size'
-SIMPLIFY_REAR_TIRE_SIZE = 'simplify_rear_tire_size'
+SIMPLIFY_TIRE_SIZE = 'simplify_tire_size_2'
+SIMPLIFY_FRONT_TIRE_SIZE = 'simplify_front_tire_size_2'
+SIMPLIFY_REAR_TIRE_SIZE = 'simplify_rear_tire_size_2'
 
 def extract_year_range(input_string):
     # 使用正規表達式，匹配形如 "xxxx - xxxx" 的年份格式
@@ -48,7 +51,9 @@ def reformat(match):
     formatted_spec = ''
     if match:
         groups = match.groups()
-        formatted_spec = f"{groups[1]}{groups[2]} {groups[0]} "
+        # formatted_spec = f"{groups[1]}{groups[2]} {groups[0]} "
+        formatted_spec = f" {groups[0]}/{groups[2]} "
+
     return formatted_spec
 
 
@@ -129,8 +134,36 @@ def store_tire_size_data(car_id, original_tire_size, property_name):
 def map_tire_size():
     
     with db.auto_data.Session() as session:
-        # vehicles= session.query(db.local_carlet.models.Vehicle).filter(db.local_carlet.models.Vehicle.make.in_(target_makes)).order_by(db.local_carlet.models.Vehicle.id.asc()).limit(50)
-        # properties= session.query(db.auto_data.car.Property).filter_by(name='Tires size').filter(not_(db.auto_data.car.Property.value.contains('Front wheel tires'))).yield_per(100)
+        properties= session.query(db.auto_data.car.Property).filter_by(name='Tires size').filter(not_(db.auto_data.car.Property.value.contains('Front wheel tires'))).yield_per(100)
+                              
+    for property in properties:
+        try:
+            original_tire_size = property.value
+
+
+            print('-------------Vehivle----------------')
+            print(f'Car ID : {property.car_id}')
+            print(f'Original Tire Size : {original_tire_size}')
+            print('--------------------------------')
+            
+            matches = extract_tire_sizes(original_tire_size)
+   
+            for match in matches:
+                print(match)
+                with db.auto_data.Session() as session:
+                    _property = session.query(db.auto_data.car.Property).filter_by(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match).first()
+                    if not _property:
+                        _property = db.auto_data.car.Property(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match)
+                        session.add(_property)
+                        session.commit()
+                print('-------------Properties----------------')
+                print(f'Simplify Tire Size : {match}')
+                print('--------------------------------')
+        except:
+            print(traceback.format_exc())
+            continue
+        
+    with db.auto_data.Session() as session:
         properties= session.query(db.auto_data.car.Property).filter_by(name='Tires size').filter(db.auto_data.car.Property.value.contains('Front wheel tires')).yield_per(100)
 
                               
@@ -153,19 +186,7 @@ def map_tire_size():
             store_tire_size_data(property.car_id, original_front_tire_size, SIMPLIFY_FRONT_TIRE_SIZE)
             store_tire_size_data(property.car_id, original_rear_tire_size, SIMPLIFY_REAR_TIRE_SIZE)
 
-            # matches = extract_tire_sizes(original_tire_size)
-   
-            # for match in matches:
-            #     print(match)
-            #     with db.auto_data.Session() as session:
-            #         _property = session.query(db.auto_data.car.Property).filter_by(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match).first()
-            #         if not _property:
-            #             _property = db.auto_data.car.Property(car_id=property.car_id, name=SIMPLIFY_TIRE_SIZE, value=match)
-            #             session.add(_property)
-            #             session.commit()
-            #     print('-------------Properties----------------')
-            #     print(f'Simplify Tire Size : {match}')
-            #     print('--------------------------------')
+
         except:
             print(traceback.format_exc())
             continue

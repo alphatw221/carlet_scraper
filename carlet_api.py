@@ -12,7 +12,7 @@ import db
 from fastapi_pagination import Page, add_pagination
 from fastapi_pagination.ext.sqlalchemy import paginate 
 
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, text
 from sqlalchemy.orm import aliased
 
 
@@ -86,8 +86,8 @@ class TireRackVehicleOut(BaseModel):
 @app.get('/carlet/vehicles', response_model=Page[CarletVehicleOut])
 def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db), 
                         make:str|None=None, 
-                        start_of_perduction_year:int|None=None,
-                        end_of_perduction_year:int|None=None,
+                        start_of_production_year:int|str|None=None,
+                        end_of_production_year:int|str|None=None,
                         name:str|None=None, 
                         keyword:str|None=None,
                         order_by:str|None=None):    
@@ -104,14 +104,12 @@ def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db),
         )\
         .join(vehicle_make)
 
-
-    
     if make:
         query = query.filter(vehicle_make.name.contains(make))
-    if start_of_perduction_year:
-        query = query.filter(vehicle_model.year>=start_of_perduction_year)
-    if end_of_perduction_year:
-        query = query.filter(vehicle_model.year<end_of_perduction_year)
+    if start_of_production_year and start_of_production_year.isnumeric():
+        query = query.filter(vehicle_model.year>=int(start_of_production_year))
+    if end_of_production_year and end_of_production_year.isnumeric():
+        query = query.filter(vehicle_model.year<int(end_of_production_year))
     if name:
         query = query.filter(vehicle_model.name.contains(name))
     if keyword:
@@ -125,24 +123,25 @@ def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db),
         ))
 
     if order_by:
-        order_by_list = order_by.split((','))
+        order_by_list = order_by.split(',')
         for _order_by in order_by_list:
             asc = True
-            if _order_by[0] == '-':
+
+            if not _order_by:
+                continue
+
+            if _order_by[0] == '-' :
+                
+                if len(_order_by)<=1:
+                    continue
                 asc = False
                 _order_by = _order_by[1:]
-                
-            if hasattr(db.local_carlet.models.VehicleModel, _order_by) :
-                if asc:
-                    query = query.order_by(getattr(db.local_carlet.models.VehicleModel, _order_by).asc())
-                else:
-                    query = query.order_by(getattr(db.local_carlet.models.VehicleModel, _order_by).desc())
 
-            elif hasattr(db.local_carlet.models.VehicleMake, _order_by) :
-                if asc:
-                    query = query.order_by(getattr(db.local_carlet.models.VehicleMake, _order_by).asc())
-                else:
-                    query = query.order_by(getattr(db.local_carlet.models.VehicleMake, _order_by).desc())
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
+
 
     return paginate(_db, query)
 
@@ -155,8 +154,8 @@ def get_carlet_vehicles(_db:db.auto_data.Session = Depends(get_auto_data_db),
                         make:str|None=None, 
                         model:str|None=None, 
                         sub_model:str|None=None, 
-                        start_of_perduction_year:int|None=None,
-                        end_of_perduction_year:int|None=None,
+                        start_of_production_year:int|None=None,
+                        end_of_production_year:int|None=None,
                         keyword:str|None=None,
                         order_by:str|None=None):    
  
@@ -176,10 +175,10 @@ def get_carlet_vehicles(_db:db.auto_data.Session = Depends(get_auto_data_db),
     
     if make:
         query = query.filter(car.make.ilike(f'%{make}%'))
-    if start_of_perduction_year:
-        query = query.filter(car.start_of_perduction_year>=start_of_perduction_year)
-    if end_of_perduction_year:
-        query = query.filter(car.end_of_perduction_year<end_of_perduction_year)
+    if start_of_production_year:
+        query = query.filter(car.start_of_perduction_year>=start_of_production_year)
+    if end_of_production_year:
+        query = query.filter(car.end_of_perduction_year<end_of_production_year)
     if model:
         query = query.filter(car.model.ilike(f'%{model}%'))
     if sub_model:
@@ -213,8 +212,8 @@ def get_tire_rack_vehicles(_db:db.tire_rack.Session = Depends(get_tire_rack_db),
                         make:str|None=None, 
                         model:str|None=None, 
                         sub_model:str|None=None, 
-                        start_of_perduction_year:int|None=None,
-                        end_of_perduction_year:int|None=None,
+                        start_of_production_year:int|None=None,
+                        end_of_production_year:int|None=None,
                         keyword:str|None=None,
                         order_by:str|None=None):    
  
@@ -235,10 +234,10 @@ def get_tire_rack_vehicles(_db:db.tire_rack.Session = Depends(get_tire_rack_db),
     
     if make:
         query = query.filter(car.make.ilike(f'%{make}%'))
-    if start_of_perduction_year:
-        query = query.filter(car.year>=start_of_perduction_year)
-    if end_of_perduction_year:
-        query = query.filter(car.year<end_of_perduction_year)
+    if start_of_production_year:
+        query = query.filter(car.year>=start_of_production_year)
+    if end_of_production_year:
+        query = query.filter(car.year<end_of_production_year)
     if model:
         query = query.filter(car.model.ilike(f'%{model}%'))
     if sub_model:
