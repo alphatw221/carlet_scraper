@@ -78,6 +78,9 @@ class VehicleModel(Base):
     make: Mapped['VehicleMake'] = relationship('VehicleMake', back_populates='vehicle_model')
 
 
+    auto_data_id = mapped_column(BIGINT, nullable=True, comment='Auto Data ID')
+    tire_rack_id = mapped_column(BIGINT, nullable=True, comment='Tire Rack ID')
+
 class Vehicle(Base):
 
     __tablename__ = 'vehicle'

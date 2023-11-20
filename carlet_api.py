@@ -1,6 +1,8 @@
-from typing import Union, List
+from typing import Union, List, Annotated
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 # from pydantic import BaseModel
 from pydantic import BaseModel
 
@@ -32,6 +34,93 @@ app = FastAPI(middleware=[
 #     model:str
 #     additional:Union[str,None] = None
 
+fake_users_db = {
+    "carlet": {
+        "username": "carlet",
+        "full_name": "carlet",
+        "email": "carlet@carlet.com.tw",
+        "hashed_password": "fakehashed12341234",
+        "disabled": False,
+    },
+}
+
+
+
+
+
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token):
+    # This doesn't provide any security at all
+    # Check the next version
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/users/me")
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    return current_user
+
+
+
+
 
 
 def get_carlet_db():
@@ -52,8 +141,10 @@ class CarletVehicleOut(BaseModel):
     name: str|None
     year: int|None
     name_variant: str|None
-
-
+    engine: str|None
+    chassis: str|None
+    auto_data_id: int|None
+    tire_rack_id: int|None
 class Property(BaseModel):
     name:str|None
     value:str|None
@@ -73,6 +164,7 @@ class TireRackVehicleOut(BaseModel):
     # start_of_perduction_year:int|None
     # end_of_perduction_year:int|None
     sub_model: str
+    year:int|None
 
 # @app.get('/users', response_model=Page[db.local_carlet.models.Vehicle])  # use Page[UserOut] as response model
 # async def get_users():
@@ -80,12 +172,17 @@ class TireRackVehicleOut(BaseModel):
 
 
 @app.get('/carlet/vehicles', response_model=Page[CarletVehicleOut])
-def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db), 
+def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+        _db:db.local_carlet.Session = Depends(get_carlet_db), 
+                        id:str|None=None,
                         make:str|None=None, 
                         start_of_production_year:int|str|None=None,
                         end_of_production_year:int|str|None=None,
-                        name:str|None=None, 
+                        model:str|None=None, 
+                        sub_model:str|None=None,
                         keyword:str|None=None,
+                        exclude_auto_data_done_mapping:str|None=None,
+                        exclude_tire_rack_done_mapping:str|None=None,
                         order_by:str|None=None):    
     
     vehicle_model = aliased(db.local_carlet.models.VehicleModel, name='vehicle_model')
@@ -97,17 +194,31 @@ def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db),
         vehicle_model.year, 
         vehicle_model.name, 
         vehicle_model.name_variant, 
+        vehicle_model.engine,
+        vehicle_model.chassis,
+        vehicle_model.auto_data_id, 
+        vehicle_model.tire_rack_id, 
+
         )\
         .join(vehicle_make)
-
+    if id and id.isnumeric():
+        query = query.filter(vehicle_make.id==int(id))
     if make:
         query = query.filter(vehicle_make.name.ilike(f'%{make}%'))
     if start_of_production_year and start_of_production_year.isnumeric():
         query = query.filter(vehicle_model.year>=int(start_of_production_year))
     if end_of_production_year and end_of_production_year.isnumeric():
         query = query.filter(vehicle_model.year<int(end_of_production_year))
-    if name:
-        query = query.filter(vehicle_model.name.ilike(f'%{name}%'))
+    if model:
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle_model.name.ilike(f'%{sub_string}%'))
+    if sub_model:
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle_model.name_variant.ilike(f'%{sub_string}%'))
     if keyword:
         query = query.filter(or_(
             vehicle_make.name.label('make').ilike(f'%{keyword}%'), 
@@ -117,6 +228,12 @@ def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db),
             vehicle_model.engine.ilike(f'%{keyword}%'),
             vehicle_model.chassis.ilike(f'%{keyword}%'),
         ))
+
+    if exclude_auto_data_done_mapping == 'true':
+        query = query.filter(vehicle_model.auto_data_id==None)
+
+    if exclude_tire_rack_done_mapping == 'true':
+        query = query.filter(vehicle_model.tire_rack_id==None)
 
     if order_by:
         order_by_list = order_by.split(',')
@@ -146,7 +263,8 @@ def get_carlet_vehicles(_db:db.local_carlet.Session = Depends(get_carlet_db),
 
 
 @app.get('/auto_data/vehicles', response_model=Page[AutoDataVehicleOut])
-def get_auto_data_vehicles(_db:db.auto_data.Session = Depends(get_auto_data_db), 
+def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+    _db:db.auto_data.Session = Depends(get_auto_data_db), 
                         id:int|str|None=None,
                         make:str|None=None, 
                         model:str|None=None, 
@@ -177,9 +295,15 @@ def get_auto_data_vehicles(_db:db.auto_data.Session = Depends(get_auto_data_db),
     if end_of_production_year and end_of_production_year.isnumeric():
         query = query.filter(car.end_of_production_year<int(end_of_production_year))
     if model:
-        query = query.filter(car.model.ilike(f'%{model}%'))
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.model.ilike(f'%{sub_string}%'))
     if sub_model:
-        query = query.filter(car.sub_model.ilike(f'%{sub_model}%'))
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.sub_model.ilike(f'%{sub_string}%'))
     if keyword:
         query = query.filter(or_(
             car.make.ilike(f'%{keyword}%'), 
@@ -214,12 +338,14 @@ def get_auto_data_vehicles(_db:db.auto_data.Session = Depends(get_auto_data_db),
 
 
 @app.get('/tire_rack/vehicles', response_model=Page[TireRackVehicleOut])
-def get_tire_rack_vehicles(_db:db.tire_rack.Session = Depends(get_tire_rack_db), 
+def get_tire_rack_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+    _db:db.tire_rack.Session = Depends(get_tire_rack_db), 
+                        id:str|int|None=None,
                         make:str|None=None, 
                         model:str|None=None, 
                         sub_model:str|None=None, 
-                        start_of_production_year:int|None=None,
-                        end_of_production_year:int|None=None,
+                        start_of_production_year:str|int|None=None,
+                        end_of_production_year:str|int|None=None,
                         keyword:str|None=None,
                         order_by:str|None=None):    
  
@@ -237,17 +363,24 @@ def get_tire_rack_vehicles(_db:db.tire_rack.Session = Depends(get_tire_rack_db),
         # car.start_of_perduction_year,
         # car.end_of_perduction_year,
         )
-    
+    if id and id.isnumeric():
+        query = query.filter(car.id==int(id))
     if make:
         query = query.filter(car.make.ilike(f'%{make}%'))
-    if start_of_production_year:
+    if start_of_production_year and start_of_production_year.isnumeric():
         query = query.filter(car.year>=start_of_production_year)
-    if end_of_production_year:
+    if end_of_production_year and end_of_production_year.isnumeric():
         query = query.filter(car.year<end_of_production_year)
     if model:
-        query = query.filter(car.model.ilike(f'%{model}%'))
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.model.ilike(f'%{sub_string}%'))
     if sub_model:
-        query = query.filter(car.sub_model.ilike(f'%{sub_model}%'))
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.sub_model.ilike(f'%{sub_string}%'))
     if keyword:
         query = query.filter(or_(
             car.make.ilike(f'%{keyword}%'), 
@@ -256,23 +389,91 @@ def get_tire_rack_vehicles(_db:db.tire_rack.Session = Depends(get_tire_rack_db),
         ))
 
     if order_by:
-        order_by_list = order_by.split((','))
+        order_by_list = order_by.split(',')
         for _order_by in order_by_list:
             asc = True
-            if _order_by[0] == '-':
+
+            if not _order_by:
+                continue
+
+            if _order_by[0] == '-' :
+                
+                if len(_order_by)<=1:
+                    continue
                 asc = False
                 _order_by = _order_by[1:]
-                
-            if hasattr(db.tire_rack.car.Car, _order_by) :
-                if asc:
-                    query = query.order_by(getattr(db.tire_rack.car.Car, _order_by).asc())
-                else:
-                    query = query.order_by(getattr(db.tire_rack.car.Car, _order_by).desc())
+
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
 
     return paginate(_db, query)
 
 
 add_pagination(app)  # important! add pagination to your app
+
+
+class AutoDataVehicle(BaseModel):
+    auto_data_vehicle_id: int|str|None
+
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/mapping/auto_data")
+def update_carlet_vehicle_auto_data_id(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    carlet_vehicle_id: int, 
+    data: AutoDataVehicle):
+    
+    print(carlet_vehicle_id)
+    print(data.auto_data_vehicle_id)
+
+    with db.local_carlet.Session() as session:
+        session.expire_on_commit=False
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.auto_data_id = data.auto_data_vehicle_id if data.auto_data_vehicle_id else None
+        session.commit()
+
+    return 'ok'
+
+
+class TireRackVehicle(BaseModel):
+    tire_rack_vehicle_id: int|str|None
+
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/mapping/tire_rack")
+def update_carlet_vehicle_tire_rack_id(
+    current_user: Annotated[User, Depends(get_current_active_user)], 
+    carlet_vehicle_id: int, 
+    data: TireRackVehicle):
+
+    with db.local_carlet.Session() as session:
+        session.expire_on_commit=False
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.tire_rack_id = data.tire_rack_vehicle_id if data.tire_rack_vehicle_id else None
+        session.commit()
+
+    return 'ok'
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
