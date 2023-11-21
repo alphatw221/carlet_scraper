@@ -80,6 +80,9 @@ class VehicleModel(Base):
 
     auto_data_id = mapped_column(BIGINT, nullable=True, comment='Auto Data ID')
     tire_rack_id = mapped_column(BIGINT, nullable=True, comment='Tire Rack ID')
+    yahoo_id = mapped_column(BIGINT, nullable=True, comment='Yahoo ID')
+    output = mapped_column(VARCHAR(64), nullable=True, comment='輸出 (馬力)')
+
 
 class Vehicle(Base):
 

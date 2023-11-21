@@ -88,5 +88,160 @@ ORDER BY  p.value
 
 
 SELECT DISTINCT p.value FROM property p JOIN car c ON p.car_id = c.id WHERE c.make in ('BMW', 'Audi', 'Mercedes-Benz', 'Porsche') and p.name='Tires size'
-
 ORDER BY p.value
+
+
+
+
+SELECT DISTINCT substring(p.value, 9,2) as od, p.value FROM property p JOIN car c ON p.car_id = c.id WHERE c.selected=true and p.name in ('simplify_tire_size_2','simplify_front_tire_size_2','simplify_rear_tire_size_2')
+ORDER BY od
+
+
+
+
+UPDATE car 
+SET selected=true
+WHERE make='Audi' and start_of_production_year>=2008 and model_category in (
+    'A1',
+    'A3',
+    'A4',
+    'A5',
+    'A6',
+    'A7',
+    'A8',
+    'e-tron',
+    'e-tron GT',
+    'Q2',
+    'Q3',
+    'Q4 e-tron',
+    'Q5',
+    'Q7',
+    'Q8',
+    'Q8 e-tron',
+    'R8',
+    'RS 3',
+    'RS 4',
+    'RS 5',
+    'RS 6',
+    'RS 7',
+    'RS e-tron GT',
+    'RS Q3',
+    'RS Q8',
+    'S1',
+    'S3',
+    'S4',
+    'S5',
+    'S6',
+    'S7',
+    'S8',
+    'SQ2',
+    'SQ5',
+    'SQ7',
+    'SQ8',
+    'SQ8 e-tron',
+    'TT') 
+
+
+UPDATE car 
+SET selected=true
+WHERE make='BMW' and start_of_production_year>=2008 and model_category in (
+'1 Series',
+'2 Series',
+'3 Series',
+'4 Series',
+'5 Series',
+'6 Series',
+'7 Series',
+'8 Series',
+'i3',
+'i4',
+'i5',
+'i7',
+'i8',
+'iX',
+'iX1',
+'iX2',
+'iX3',
+'M2',
+'M3',
+'M4',
+'M5',
+'M6',
+'M8',
+'X1',
+'X2',
+'X3',
+'X3 M',
+'X4',
+'X4 M',
+'X5',
+'X5 M',
+'X6',
+'X6 M',
+'X7',
+'XM',
+'Z4'
+) 
+
+
+UPDATE car 
+SET selected=true
+WHERE make='Mercedes-Benz' and start_of_production_year>=2008 and model_category in (
+'A-class',
+'AMG GT',
+'AMG GT 4-Door Coupe',
+'B-class',
+'C-class',
+'CL',
+'CLA',
+'CLE',
+'CLK',
+'CLS',
+'E-class',
+'EQA',
+'EQB',
+'EQC',
+'EQE',
+'EQE SUV',
+'EQG',
+'EQS',
+'EQS SUV',
+'G-class',
+'GL',
+'GLA',
+'GLB',
+'GLC',
+'GLE',
+'GLK',
+'GLS',
+'M-class',
+'R-class',
+'S-class',
+'SL',
+'SLC',
+'SLK',
+'SLS',
+'V-class',
+'Vito') 
+
+
+
+UPDATE car 
+SET selected=true
+WHERE make='Porsche' and start_of_production_year>=2008 and model_category in (
+
+'718',
+'911',
+'Boxster',
+'Cayenne',
+'Cayman',
+'Macan',
+'Panamera',
+'Taycan'
+) 
+
+
+
+
+
+

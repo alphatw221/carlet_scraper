@@ -4,13 +4,13 @@ from typing import List
 from typing import Optional
 from datetime import datetime, date
 
-from sqlalchemy import Integer, String, ForeignKey, Uuid, Date, DateTime
+from sqlalchemy import Integer, String, ForeignKey, Uuid, Date, DateTime, Boolean
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, text
 
 
 
@@ -18,6 +18,7 @@ from sqlalchemy import UniqueConstraint
 
 class Car(Base):
     __tablename__ = "car"
+    selected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text('false'))
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

@@ -99,7 +99,7 @@ async def get_current_active_user(
     return current_user
 
 
-@app.post("/token")
+@app.post("/carlet/token")
 async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user_dict = fake_users_db.get(form_data.username)
     if not user_dict:
@@ -112,7 +112,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     return {"access_token": user.username, "token_type": "bearer"}
 
 
-@app.get("/users/me")
+@app.get("/carlet/users/me")
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
@@ -143,8 +143,12 @@ class CarletVehicleOut(BaseModel):
     name_variant: str|None
     engine: str|None
     chassis: str|None
+
+    output: str|None
     auto_data_id: int|None
     tire_rack_id: int|None
+    yahoo_id: int|None
+
 class Property(BaseModel):
     name:str|None
     value:str|None
@@ -156,6 +160,17 @@ class AutoDataVehicleOut(BaseModel):
     end_of_production_year:int|None
     sub_model: str
     # properties: List[Property]
+
+class YahooVehicleOut(BaseModel):
+    id:int
+    make: str
+    model: str
+    sub_model: str
+
+    # price: float|None
+    output: str|None
+    displacement: str|None
+    
 
 class TireRackVehicleOut(BaseModel):
     id:int
@@ -181,8 +196,11 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
                         model:str|None=None, 
                         sub_model:str|None=None,
                         keyword:str|None=None,
+                        engine:str|None=None,
+                        chassis:str|None=None,
                         exclude_auto_data_done_mapping:str|None=None,
                         exclude_tire_rack_done_mapping:str|None=None,
+                        exclude_yahoo_done_mapping:str|None=None,
                         order_by:str|None=None):    
     
     vehicle_model = aliased(db.local_carlet.models.VehicleModel, name='vehicle_model')
@@ -196,13 +214,15 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
         vehicle_model.name_variant, 
         vehicle_model.engine,
         vehicle_model.chassis,
+        vehicle_model.output,
         vehicle_model.auto_data_id, 
         vehicle_model.tire_rack_id, 
+        vehicle_model.yahoo_id, 
 
         )\
         .join(vehicle_make)
     if id and id.isnumeric():
-        query = query.filter(vehicle_make.id==int(id))
+        query = query.filter(vehicle_model.id==int(id))
     if make:
         query = query.filter(vehicle_make.name.ilike(f'%{make}%'))
     if start_of_production_year and start_of_production_year.isnumeric():
@@ -228,12 +248,18 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
             vehicle_model.engine.ilike(f'%{keyword}%'),
             vehicle_model.chassis.ilike(f'%{keyword}%'),
         ))
-
+    if engine:
+        query = query.filter(vehicle_model.engine.ilike(f'%{engine}%'))
+    if chassis:
+        query = query.filter(vehicle_model.chassis.ilike(f'%{chassis}%'))
     if exclude_auto_data_done_mapping == 'true':
         query = query.filter(vehicle_model.auto_data_id==None)
 
     if exclude_tire_rack_done_mapping == 'true':
         query = query.filter(vehicle_model.tire_rack_id==None)
+
+    if exclude_yahoo_done_mapping == 'true':
+        query = query.filter(vehicle_model.yahoo_id==None)
 
     if order_by:
         order_by_list = order_by.split(',')
@@ -262,7 +288,7 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
 
 
 
-@app.get('/auto_data/vehicles', response_model=Page[AutoDataVehicleOut])
+@app.get('/carlet/auto_data/vehicles', response_model=Page[AutoDataVehicleOut])
 def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
     _db:db.auto_data.Session = Depends(get_auto_data_db), 
                         id:int|str|None=None,
@@ -337,7 +363,86 @@ def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_act
     return paginate(_db, query)
 
 
-@app.get('/tire_rack/vehicles', response_model=Page[TireRackVehicleOut])
+
+
+@app.get('/carlet/yahoo/vehicles', response_model=Page[YahooVehicleOut])
+def get_yahoo_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+    _db:db.local_carlet.Session = Depends(get_carlet_db), 
+                        id:int|str|None=None,
+                        make:str|None=None, 
+                        model:str|None=None, 
+                        sub_model:str|None=None, 
+                        keyword:str|None=None,
+                        output:str|None=None,
+                        displacement:str|None=None,
+                        order_by:str|None=None):    
+ 
+
+
+    vehicle = aliased(db.local_carlet.models.Vehicle, name='vehicle')
+
+    query = select(
+        vehicle.id, 
+        vehicle.make,
+        vehicle.model,
+        vehicle.sub_model,
+        vehicle.output,
+        vehicle.displacement,
+        )
+    if id and id.isnumeric():
+        query = query.filter(vehicle.id==int(id))
+    if make:
+        query = query.filter(vehicle.make.ilike(f'%{make}%'))
+    
+    if model:
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle.model.ilike(f'%{sub_string}%'))
+    if sub_model:
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle.sub_model.ilike(f'%{sub_string}%'))
+    if keyword:
+        query = query.filter(or_(
+            vehicle.make.ilike(f'%{keyword}%'), 
+            vehicle.model.ilike(f'%{keyword}%'),
+            vehicle.sub_model.ilike(f'%{keyword}%'),
+        ))
+
+    if output:
+        query = query.filter(vehicle.output.ilike(f'%{output}%'))
+    if displacement:
+        query = query.filter(vehicle.displacement.ilike(f'%{displacement}%'))
+
+    if order_by:
+        order_by_list = order_by.split(',')
+        for _order_by in order_by_list:
+            asc = True
+
+            if not _order_by:
+                continue
+
+            if _order_by[0] == '-' :
+                
+                if len(_order_by)<=1:
+                    continue
+                asc = False
+                _order_by = _order_by[1:]
+
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
+
+
+
+    return paginate(_db, query)
+
+
+
+@app.get('/carlet/tire_rack/vehicles', response_model=Page[TireRackVehicleOut])
 def get_tire_rack_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
     _db:db.tire_rack.Session = Depends(get_tire_rack_db), 
                         id:str|int|None=None,
@@ -464,6 +569,52 @@ def update_carlet_vehicle_tire_rack_id(
 
 
 
+class YahooVehicle(BaseModel):
+    yahoo_vehicle_id: int|str|None
+
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/mapping/yahoo")
+def update_carlet_vehicle_yahoo_id(
+    current_user: Annotated[User, Depends(get_current_active_user)], 
+    carlet_vehicle_id: int, 
+    data: YahooVehicle):
+    print(data)
+    with db.local_carlet.Session() as session:
+
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.yahoo_id = data.yahoo_vehicle_id if data.yahoo_vehicle_id else None
+        print(car)
+        print(car.yahoo_id)
+        session.commit()
+
+    return 'ok'
+
+
+class updateVehicleData(BaseModel):
+    output: str|None
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/update")
+def update_carlet_vehicle(
+    current_user: Annotated[User, Depends(get_current_active_user)], 
+    carlet_vehicle_id: int, 
+    data: updateVehicleData):
+
+    with db.local_carlet.Session() as session:
+
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.output = data.output if data.output else None
+        session.commit()
+
+    return 'ok'
+
 
 
 
@@ -547,7 +698,12 @@ def update_carlet_vehicle_tire_rack_id(
 
 
 # poetry run uvicorn carlet_api:app --reload
+
+# poetry run uvicorn carlet_api:app --host 0.0.0.0 --port 8000
 #http://127.0.0.1:8000/docs
 #http://127.0.0.1:8000/redoc
+
+
+
 
 
