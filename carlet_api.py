@@ -141,6 +141,7 @@ class CarletVehicleOut(BaseModel):
     name: str|None
     year: int|None
     name_variant: str|None
+    transmission:str|None
     engine: str|None
     chassis: str|None
 
@@ -212,6 +213,7 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
         vehicle_model.year, 
         vehicle_model.name, 
         vehicle_model.name_variant, 
+        vehicle_model.transmission,
         vehicle_model.engine,
         vehicle_model.chassis,
         vehicle_model.output,

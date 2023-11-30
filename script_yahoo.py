@@ -171,7 +171,7 @@ def main():
         try:
             target_makes = [
                 'BMW 寶馬', 
-                # 'Audi 奧迪', 
+                'Audi 奧迪', 
                 'M-Benz 賓士', 
                 'Porsche 保時捷'
             ]

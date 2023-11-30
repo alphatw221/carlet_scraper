@@ -27,3 +27,11 @@ alembic -n local_carlet upgrade head
 
 
 sqlacodegen_v2 mysql+pymysql://root:carletcarlet@127.0.0.1:3306/carlet --outfile=./db/local_carlet/models.py
+
+
+database-0.cluster-cqvxa7jhryy9.ap-northeast-1.rds.amazonaws.com
+
+rd1
+
+
+sqlacodegen_v2 mysql+pymysql://rd1:joX?SXII!o+,:oYve{<}@~Gy#,hl@Xo#@database-0.cluster-cqvxa7jhryy9.ap-northeast-1.rds.amazonaws.com/carlet --outfile=./db/local_carlet/models.py
