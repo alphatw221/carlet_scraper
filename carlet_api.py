@@ -145,10 +145,11 @@ class CarletVehicleOut(BaseModel):
     engine: str|None
     chassis: str|None
 
-    output: str|None
+    hp: str|None
+
     auto_data_id: int|None
     tire_rack_id: int|None
-    yahoo_id: int|None
+    yahoo_id: str|None
 
 class Property(BaseModel):
     name:str|None
@@ -169,7 +170,7 @@ class YahooVehicleOut(BaseModel):
     sub_model: str
 
     # price: float|None
-    output: str|None
+    hp: str|None
     displacement: str|None
     
 
@@ -216,7 +217,7 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
         vehicle_model.transmission,
         vehicle_model.engine,
         vehicle_model.chassis,
-        vehicle_model.output,
+        vehicle_model.hp,
         vehicle_model.auto_data_id, 
         vehicle_model.tire_rack_id, 
         vehicle_model.yahoo_id, 
@@ -375,7 +376,7 @@ def get_yahoo_vehicles(current_user: Annotated[User, Depends(get_current_active_
                         model:str|None=None, 
                         sub_model:str|None=None, 
                         keyword:str|None=None,
-                        output:str|None=None,
+                        hp:str|None=None,
                         displacement:str|None=None,
                         order_by:str|None=None):    
  
@@ -413,8 +414,8 @@ def get_yahoo_vehicles(current_user: Annotated[User, Depends(get_current_active_
             vehicle.sub_model.ilike(f'%{keyword}%'),
         ))
 
-    if output:
-        query = query.filter(vehicle.output.ilike(f'%{output}%'))
+    if hp:
+        query = query.filter(vehicle.output.ilike(f'%{hp}%'))
     if displacement:
         query = query.filter(vehicle.displacement.ilike(f'%{displacement}%'))
 
@@ -597,7 +598,7 @@ def update_carlet_vehicle_yahoo_id(
 
 
 class updateVehicleData(BaseModel):
-    output: str|None
+    hp: str|None
 
 @app.put("/carlet/vehicle/{carlet_vehicle_id}/update")
 def update_carlet_vehicle(
@@ -612,7 +613,7 @@ def update_carlet_vehicle(
         if not car:
             raise HTTPException(status_code=404, detail="Vehidle Not Found")
         
-        car.output = data.output if data.output else None
+        car.hp = data.hp if data.hp else None
         session.commit()
 
     return 'ok'

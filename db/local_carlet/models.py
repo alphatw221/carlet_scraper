@@ -1,13 +1,13 @@
 from typing import List
 
-from sqlalchemy import Column, DateTime, ForeignKeyConstraint, Index, text
-from sqlalchemy.dialects.mysql import BIGINT, CHAR, INTEGER, TINYINT, VARCHAR, YEAR, FLOAT
+from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKeyConstraint, Index, String, text
+from sqlalchemy.dialects.mysql import BIGINT, CHAR, INTEGER, TINYINT, VARCHAR, YEAR
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 from sqlalchemy.orm.base import Mapped
 
-from . import Base
-# Base = declarative_base()
 
+
+from . import Base
 
 class VehicleDefCountry(Base):
     __tablename__ = 'vehicle_def_country'
@@ -66,64 +66,37 @@ class VehicleModel(Base):
     is_show = mapped_column(TINYINT, nullable=False, server_default=text("'0'"), comment='是否在前端顯示')
     engine = mapped_column(CHAR(192), nullable=False, server_default=text("''"), comment='引擎代號')
     chassis = mapped_column(CHAR(192), nullable=False, server_default=text("''"), comment='底盤代號')
-    created_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP'))
-    updated_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))
+    hp = mapped_column(VARCHAR(16), nullable=False, server_default=text("''"), comment='馬力HP')
+    yahoo_id = mapped_column(VARCHAR(10), nullable=False, server_default=text("''"), comment='yahooId')
+    yahoo_link = mapped_column(VARCHAR(1024), nullable=False, server_default=text("''"), comment='yahooLink')
     hash1 = mapped_column(CHAR(32), nullable=False, server_default=text("''"), comment='temporary using')
     hash2 = mapped_column(CHAR(32), nullable=False, server_default=text("''"), comment='temporary using')
+    created_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP'))
+    updated_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))
     deleted_ts = mapped_column(BIGINT, server_default=text("'0'"), comment="unixtime, we won't really delete accounts")
 
-
-    output =  mapped_column(CHAR(16), nullable=True, comment='輸出')
     vehicle_def_country: Mapped['VehicleDefCountry'] = relationship('VehicleDefCountry', back_populates='vehicle_model')
     make: Mapped['VehicleMake'] = relationship('VehicleMake', back_populates='vehicle_model')
 
 
-    auto_data_id = mapped_column(BIGINT, nullable=True, comment='Auto Data ID')
-    tire_rack_id = mapped_column(BIGINT, nullable=True, comment='Tire Rack ID')
-    yahoo_id = mapped_column(BIGINT, nullable=True, comment='Yahoo ID')
-    output = mapped_column(VARCHAR(64), nullable=True, comment='輸出 (馬力)')
+    auto_data_id = mapped_column(INTEGER, nullable=True, comment='Auto Data ID')
+    tire_rack_id = mapped_column(INTEGER, nullable=True, comment='Tire Rack ID')
+    #     yahoo_id = mapped_column(BIGINT, nullable=True, comment='Yahoo ID')
+
+
+
+
 
 
 class Vehicle(Base):
-
     __tablename__ = 'vehicle'
-    
 
-    id = mapped_column(BIGINT, primary_key=True, comment='pk')
-
-    # make_id = mapped_column(BIGINT, nullable=False, comment='品牌id, fk vehicle_make.id')
-
-
-
-    # year = mapped_column(YEAR, nullable=False, comment='年份')
-    make = mapped_column(VARCHAR(64), nullable=False, comment='車廠')
-    model = mapped_column(VARCHAR(128), nullable=False, comment='型號')
-    sub_model = mapped_column(VARCHAR(255), nullable=False, comment='子型號')
-    
-    price = mapped_column(FLOAT, nullable=False, server_default=text('0'), comment='售價')
-    output = mapped_column(VARCHAR(128), nullable=False, server_default='', comment='子型號')
-    displacement = mapped_column(VARCHAR(128), nullable=False, server_default='', comment='排氣量')
-
+    id = mapped_column(BigInteger, primary_key=True, comment='pk')
+    make = mapped_column(String(64), nullable=False, comment='車廠')
+    model = mapped_column(String(128), nullable=False, comment='型號')
+    sub_model = mapped_column(String(255), nullable=False, comment='子型號')
+    price = mapped_column(Float, nullable=False, server_default=text("'0'"), comment='售價')
+    output = mapped_column(String(128), nullable=False, server_default=text("''"), comment='子型號')
+    displacement = mapped_column(String(128), nullable=False, server_default=text("''"), comment='排氣量')
     created_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP'))
     updated_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))
-
-
-    # displacement = mapped_column(INTEGER, nullable=False, comment='排氣量, engine displacement')
-    # fuel = mapped_column(CHAR(16), nullable=False, comment='燃料, engine type, fuel type')
-    # transmission = mapped_column(CHAR(16), nullable=False, comment='變速箱, multi-speed transmission')
-    # trim_level = mapped_column(VARCHAR(64), nullable=False, server_default=text("''"), comment='車型, model trim level')
-    # code = mapped_column(VARCHAR(64), nullable=False, server_default=text("''"), comment='車型代號, body code/vin')
-    # size = mapped_column(CHAR(16), nullable=False, comment='大小, vehicle body size')
-    # country = mapped_column(CHAR(8), nullable=False, server_default=text("'未定'"), comment='車系(無使用, 來源沒有)')
-    # supported = mapped_column(TINYINT, nullable=False, comment='開放,do we support maintenance')
-    # is_show = mapped_column(TINYINT, nullable=False, server_default=text("'0'"), comment='是否在前端顯示')
-    # engine = mapped_column(CHAR(192), nullable=False, server_default=text("''"), comment='引擎代號')
-    # chassis = mapped_column(CHAR(192), nullable=False, server_default=text("''"), comment='底盤代號')
-    # created_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP'))
-    # updated_at = mapped_column(DateTime, nullable=False, server_default=text('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'))
-    # hash1 = mapped_column(CHAR(32), nullable=False, server_default=text("''"), comment='temporary using')
-    # hash2 = mapped_column(CHAR(32), nullable=False, server_default=text("''"), comment='temporary using')
-    # deleted_ts = mapped_column(BIGINT, server_default=text("'0'"), comment="unixtime, we won't really delete accounts")
-
-    # vehicle_def_country: Mapped['VehicleDefCountry'] = relationship('VehicleDefCountry', back_populates='vehicle_model')
-    # make: Mapped['VehicleMake'] = relationship('VehicleMake', back_populates='vehicle_model')

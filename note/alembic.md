@@ -35,3 +35,8 @@ rd1
 
 
 sqlacodegen_v2 mysql+pymysql://rd1:joX?SXII!o+,:oYve{<}@~Gy#,hl@Xo#@database-0.cluster-cqvxa7jhryy9.ap-northeast-1.rds.amazonaws.com/carlet --outfile=./db/local_carlet/models.py
+
+
+
+sqlacodegen_v2 mysql+pymysql://root:12341234@kptcp-5a3eca99887092e2.elb.ap-southeast-1.amazonaws.com:30004/carlet --outfile=./db/local_carlet/models.py
+

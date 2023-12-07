@@ -1,8 +1,8 @@
 """update
 
-Revision ID: 47d236bd558f
-Revises: 5aadcd1c998f
-Create Date: 2023-11-20 00:44:12.503670
+Revision ID: 4d21a5b04f0e
+Revises: 
+Create Date: 2023-12-07 14:43:54.927051
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = '47d236bd558f'
-down_revision: Union[str, None] = '5aadcd1c998f'
+revision: str = '4d21a5b04f0e'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
