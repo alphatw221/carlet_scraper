@@ -14,9 +14,14 @@ import db
 from fastapi_pagination import Page, add_pagination
 from fastapi_pagination.ext.sqlalchemy import paginate 
 
-from sqlalchemy import select, or_, text
+from sqlalchemy import select, or_, text, not_
 from sqlalchemy.orm import aliased
 
+import re
+
+
+def is_number(s):
+    return bool(re.match(r'^-?\d+(?:\.\d+)?$', s))
 
 
 app = FastAPI(middleware=[
@@ -196,14 +201,20 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
                         start_of_production_year:int|str|None=None,
                         end_of_production_year:int|str|None=None,
                         model:str|None=None, 
+                        exclude_model:str|None=None, 
                         sub_model:str|None=None,
+                        exclude_sub_model:str|None=None,
                         keyword:str|None=None,
                         engine:str|None=None,
                         chassis:str|None=None,
                         exclude_auto_data_done_mapping:str|None=None,
                         exclude_tire_rack_done_mapping:str|None=None,
                         exclude_yahoo_done_mapping:str|None=None,
-                        order_by:str|None=None):    
+                        order_by:str|None=None,
+                        auto_data_id:str|None=None,
+                        tire_rack_id:str|None=None,
+                        yahoo_id:str|None=None,
+                        ):    
     
     vehicle_model = aliased(db.local_carlet.models.VehicleModel, name='vehicle_model')
     vehicle_make = aliased(db.local_carlet.models.VehicleMake, name='vehicle_make')
@@ -226,6 +237,13 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
         .join(vehicle_make)
     if id and id.isnumeric():
         query = query.filter(vehicle_model.id==int(id))
+
+    if auto_data_id and is_number(auto_data_id):
+        query = query.filter(vehicle_model.auto_data_id==int(auto_data_id))
+    if tire_rack_id and is_number(tire_rack_id):
+        query = query.filter(vehicle_model.tire_rack_id==int(tire_rack_id))
+    if yahoo_id and is_number(yahoo_id):
+        query = query.filter(vehicle_model.yahoo_id==int(yahoo_id))
     if make:
         query = query.filter(vehicle_make.name.ilike(f'%{make}%'))
     if start_of_production_year and start_of_production_year.isnumeric():
@@ -237,11 +255,22 @@ def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active
             if not sub_string:
                 continue
             query = query.filter(vehicle_model.name.ilike(f'%{sub_string}%'))
+    if exclude_model:
+        for sub_string in exclude_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(not_(vehicle_model.name.ilike(f'%{sub_string}%')))
     if sub_model:
         for sub_string in sub_model.split(','):
             if not sub_string:
                 continue
             query = query.filter(vehicle_model.name_variant.ilike(f'%{sub_string}%'))
+    if exclude_sub_model:
+        print(exclude_sub_model)
+        for sub_string in exclude_sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(not_(vehicle_model.name_variant.ilike(f'%{sub_string}%')))
     if keyword:
         query = query.filter(or_(
             vehicle_make.name.label('make').ilike(f'%{keyword}%'), 
