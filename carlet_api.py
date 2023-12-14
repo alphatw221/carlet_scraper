@@ -166,6 +166,8 @@ class AutoDataVehicleOut(BaseModel):
     start_of_production_year:int|None
     end_of_production_year:int|None
     sub_model: str
+    property_name:str|None
+    property_value:str|None
     # properties: List[Property]
 
 class YahooVehicleOut(BaseModel):
@@ -335,6 +337,7 @@ def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_act
 
 
     car = aliased(db.auto_data.car.Car, name='car')
+    property = aliased(db.auto_data.car.Property, name='property')
 
     query = select(
         car.id, 
@@ -343,7 +346,10 @@ def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_act
         car.sub_model,
         car.start_of_production_year,
         car.end_of_production_year,
-        )
+        property.name.label('property_name'),
+        property.value.label('property_value')
+        ).join(property).filter(property.name.in_(['Number of gears and type of gearbox']))
+    
     if id and id.isnumeric():
         query = query.filter(car.id==int(id))
     if make:
@@ -391,7 +397,7 @@ def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_act
                 query = query.order_by(text(f'{_order_by} DESC'))
 
 
-
+    print(query)
     return paginate(_db, query)
 
 
@@ -739,3 +745,4 @@ def update_carlet_vehicle(
 
 
 
+# docker build -t yihsuehlin/carlet_api:latest -f Dockerfile . 
