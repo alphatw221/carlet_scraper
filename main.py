@@ -1,456 +1,742 @@
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import Select
+from typing import Union, List, Annotated
 
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-import time
+# from pydantic import BaseModel
+from pydantic import BaseModel
 
-from selenium.common.exceptions import TimeoutException
-import selenium
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 
 import db
+
+from fastapi_pagination import Page, add_pagination
+from fastapi_pagination.ext.sqlalchemy import paginate 
+
+from sqlalchemy import select, or_, text, not_
+from sqlalchemy.orm import aliased
+
 import re
-import traceback
-# import concurrent.futures
 
-import threading
-
-browsers = []
-
-def init_browser():
-    browser = webdriver.Chrome()
-    browser.get("https://www.liqui-moly.com/en/")
-    try:
-        delay = 10
-        btn = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'CybotCookiebotDialogBodyButtonDecline')))
-        if btn:
-            btn.click()
-    except TimeoutException:
-        print('No Accept Cookie Dialog')
-        pass
-    browsers.append(browser)
-    time.sleep(5)
-    return browser
+import lib
 
 
-def init_browsers():
 
-    threads = []
-    for i in range(1):
-        threads.append(threading.Thread(target = init_browser))
-        threads[i].start()
+app = FastAPI(middleware=[
+    Middleware(CORSMiddleware, 
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],)
+])
 
-    for i in range(1):
-        threads[i].join()
+# app = FastAPI()
+# class Car(BaseModel):
+#     make:str
+#     year:int
+#     model:str
+#     additional:Union[str,None] = None
 
+fake_users_db = {
+    "carlet": {
+        "username": "carlet",
+        "full_name": "carlet",
+        "email": "carlet@carlet.com.tw",
+        "hashed_password": "fakehashed12341234",
+        "disabled": False,
+    },
+}
+
+def fake_hash_password(password: str):
+    return "fakehashed" + password
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
+
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+
+def fake_decode_token(token):
+    # This doesn't provide any security at all
+    # Check the next version
+    user = get_user(fake_users_db, token)
+    return user
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+@app.post("/carlet/token")
+async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    user_dict = fake_users_db.get(form_data.username)
+    if not user_dict:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = UserInDB(**user_dict)
+    hashed_password = fake_hash_password(form_data.password)
+    if not hashed_password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
+@app.get("/carlet/users/me")
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    return current_user
+
+
+
+
+
+
+def get_carlet_db():
+    with db.local_carlet.Session() as session:
+        yield session
+
+def get_auto_data_db():
+    with db.auto_data.Session() as session:
+        yield session
+
+def get_tire_rack_db():
+    with db.tire_rack.Session() as session:
+        yield session
+
+class CarletVehicleOut(BaseModel):
+    id: int|None
+    make: str|None
+    name: str|None
+    year: int|None
+    name_variant: str|None
+    transmission:str|None
+    engine: str|None
+    chassis: str|None
+
+    hp: str|None
+
+    auto_data_id: int|None
+    tire_rack_id: int|None
+    yahoo_id: str|None
+
+class Property(BaseModel):
+    name:str|None
+    value:str|None
+class AutoDataVehicleOut(BaseModel):
+    id:int
+    make: str
+    model: str
+    start_of_production_year:int|None
+    end_of_production_year:int|None
+    sub_model: str
+    property_name:str|None
+    property_value:str|None
+    # properties: List[Property]
+
+class YahooVehicleOut(BaseModel):
+    id:int
+    make: str
+    model: str
+    sub_model: str
+
+    # price: float|None
+    hp: str|None
+    displacement: str|None
     
 
-def liqui_moly_scraper(browser:webdriver.Chrome, vehicle_make, vehicle_model:str, vehicle_sub_model:str):
-    print('-------------------')
-    print(vehicle_make, vehicle_model, vehicle_sub_model)
-    print('-------------------')
-    # browsers.append(browser)
-    return
-    try:
+class TireRackVehicleOut(BaseModel):
+    id:int
+    make: str
+    model: str
+    # start_of_perduction_year:int|None
+    # end_of_perduction_year:int|None
+    sub_model: str
+    year:int|None
 
-        # browser = webdriver.Chrome()
-        # browser.get("https://www.liqui-moly.com/en/")
-        # try:
-        #     delay = 10
-        #     btn = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'CybotCookiebotDialogBodyButtonDecline')))
-        #     if btn:
-        #         btn.click()
-        # except TimeoutException:
-        #     print('No Accept Cookie Dialog')
-        #     pass
-        print('-------------------')
-        print(vehicle_make, vehicle_model, vehicle_sub_model)
-
-        print('-------------------')
-
-        vehicle_make_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
-        vehicle_make_select.select_by_visible_text(vehicle_make)
-        time.sleep(15)   
-
-        vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
-        vehicle_model_select.select_by_visible_text(vehicle_model)
-        time.sleep(15)
-
-        vehicle_sub_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
-        vehicle_sub_model_select.select_by_visible_text(vehicle_sub_model)
-        time.sleep(15)
-
-        reco_accordion = browser.find_element(By.ID, "reco-accordion")
-        titles = reco_accordion.find_elements(By.CLASS_NAME,'panel-title')
-        # titles = reco_accordion.find_elements(By.XPATH,'/div[@class="panel panel-default"]/div[@class="panel-heading collapsed"]/h4[@class="panel-title"]/span')
-        # print(titles)
-        for title in titles:
-            print(title.text)
-
-        # headings = reco_accordion.find_elements(By.CSS_SELECTOR,'panel-heading')
-        headings = reco_accordion.find_elements(By.XPATH,'.//div[@class="panel-heading collapsed"]')
-
-        for heading in headings:
-            browser.execute_script("arguments[0].click();", heading)
-            time.sleep(1)
-        # car_data = {}
-        # year_pattern = r'\[[(\d{4}-\d{4}|\d{4}-)]\]'
-        # engine_output_pattern = r'\((\d+ kW)\)'
-
-        # matches = re.findall(year_pattern, vehicle_model)
-        # start_year, end_year = None, None
-        # for match in matches:
-        #     year_range = match.split('-')
-
-        #     start_year = year_range[0]
-        #     end_year = year_range[1] if len(year_range) > 1 else ""
-
-        #     vehicle_model = vehicle_model.replace(f'[{match}]', '')
-        #     vehicle_model = vehicle_model.strip()
-
-        #     vehicle_sub_model = vehicle_sub_model.replace(f'[{match}]', '')
-        #     vehicle_sub_model = vehicle_sub_model.strip()
-
-        # matches = re.findall(engine_output_pattern, vehicle_sub_model)
-        # for match in matches:
-
-        #     vehicle_sub_model = vehicle_sub_model.replace(f'({match})', '')
-        #     vehicle_sub_model = vehicle_sub_model.strip()
+# @app.get('/users', response_model=Page[db.local_carlet.models.Vehicle])  # use Page[UserOut] as response model
+# async def get_users():
+#     return paginate(users)  # use paginate function to paginate your data
 
 
-
-
-        # with db.default.Session() as session:
-        #     make = session.query(db.default.make.Make).filter_by(name=vehicle_make).first()
-        #     if not make:
-        #         make = db.default.make.Make(name='')
-        #         session.add(make)
-        #         session.commit()
-            
-        #     car = session.query(db.default.car.Car).filter_by(make=make, model=vehicle_model, sub_model=vehicle_sub_model)
-        #     if not car:
-        #         car = db.default.car.Car(make=make, model=vehicle_model, sub_model=vehicle_sub_model)
-        #         session.add(car)
-        #         session.commit()
-    except Exception as e:
-        print(vehicle_make, vehicle_model, vehicle_sub_model)
-        print(e)
-    browsers.append(browser)
-
-
-
-
-def engine_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
-    try:
-        title = panel.find_element(By.CLASS_NAME,'panel-title')
-
-    except Exception:
-        return
-
-
-
-    if 'Engine' not in title.text:
-         return
+@app.get('/carlet/vehicles', response_model=Page[CarletVehicleOut])
+def get_carlet_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+        _db:db.local_carlet.Session = Depends(get_carlet_db), 
+                        id:str|None=None,
+                        make:str|None=None, 
+                        start_of_production_year:int|str|None=None,
+                        end_of_production_year:int|str|None=None,
+                        model:str|None=None, 
+                        exclude_model:str|None=None, 
+                        sub_model:str|None=None,
+                        exclude_sub_model:str|None=None,
+                        keyword:str|None=None,
+                        engine:str|None=None,
+                        chassis:str|None=None,
+                        exclude_auto_data_done_mapping:str|None=None,
+                        exclude_tire_rack_done_mapping:str|None=None,
+                        exclude_yahoo_done_mapping:str|None=None,
+                        order_by:str|None=None,
+                        auto_data_id:str|None=None,
+                        tire_rack_id:str|None=None,
+                        yahoo_id:str|None=None,
+                        ):    
     
+    vehicle_model = aliased(db.local_carlet.models.VehicleModel, name='vehicle_model')
+    vehicle_make = aliased(db.local_carlet.models.VehicleMake, name='vehicle_make')
 
-    pattern = r"Engine\s+[\w\s]+"
+    query = select(
+        vehicle_model.id, 
+        vehicle_make.name.label('make'),
+        vehicle_model.year, 
+        vehicle_model.name, 
+        vehicle_model.name_variant, 
+        vehicle_model.transmission,
+        vehicle_model.engine,
+        vehicle_model.chassis,
+        vehicle_model.hp,
+        vehicle_model.auto_data_id, 
+        vehicle_model.tire_rack_id, 
+        vehicle_model.yahoo_id, 
 
-    matches = re.findall(pattern, title.text)
-    engine_code = ['']
-    for match in matches:
-        match = match.replace('Engine','')
-        engine_info = match.strip()
-        engine_code.append(engine_info)
-    engine_code = None if len(engine_code)==1 else ' '.join(engine_code)
-    case_use, case_interval, case_capacity = '', '',''
+        )\
+        .join(vehicle_make)
+    if id and id.isnumeric():
+        query = query.filter(vehicle_model.id==int(id))
 
-    try:
-        case_use = panel.find_element(By.XPATH,'.//div[@class="case use"]').text
-    except Exception:
-        pass
-    try:
-        case_interval = panel.find_element(By.XPATH,'.//div[@class="case interval"]').text
-    except Exception:
-        pass
-    try:
-        case_capacity = panel.find_element(By.XPATH,'.//div[@class="case capacity"]').text
-    except Exception:
-        pass
+    if auto_data_id and lib.utils.is_number(auto_data_id):
+        query = query.filter(vehicle_model.auto_data_id==int(auto_data_id))
+    if tire_rack_id and lib.utils.is_number(tire_rack_id):
+        query = query.filter(vehicle_model.tire_rack_id==int(tire_rack_id))
+    if yahoo_id and lib.utils.is_number(yahoo_id):
+        query = query.filter(vehicle_model.yahoo_id==int(yahoo_id))
+    if make:
+        query = query.filter(vehicle_make.name.ilike(f'%{make}%'))
+    if start_of_production_year and start_of_production_year.isnumeric():
+        query = query.filter(vehicle_model.year>=int(start_of_production_year))
+    if end_of_production_year and end_of_production_year.isnumeric():
+        query = query.filter(vehicle_model.year<int(end_of_production_year))
+    if model:
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle_model.name.ilike(f'%{sub_string}%'))
+    if exclude_model:
+        for sub_string in exclude_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(not_(vehicle_model.name.ilike(f'%{sub_string}%')))
+    if sub_model:
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle_model.name_variant.ilike(f'%{sub_string}%'))
+    if exclude_sub_model:
+        print(exclude_sub_model)
+        for sub_string in exclude_sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(not_(vehicle_model.name_variant.ilike(f'%{sub_string}%')))
+    if keyword:
+        query = query.filter(or_(
+            vehicle_make.name.label('make').ilike(f'%{keyword}%'), 
+            vehicle_model.name.ilike(f'%{keyword}%'),
+            vehicle_model.variant.ilike(f'%{keyword}%'),
+            vehicle_model.name_variant.ilike(f'%{keyword}%'),
+            vehicle_model.engine.ilike(f'%{keyword}%'),
+            vehicle_model.chassis.ilike(f'%{keyword}%'),
+        ))
+    if engine:
+        query = query.filter(vehicle_model.engine.ilike(f'%{engine}%'))
+    if chassis:
+        query = query.filter(vehicle_model.chassis.ilike(f'%{chassis}%'))
+    if exclude_auto_data_done_mapping == 'true':
+        query = query.filter(vehicle_model.auto_data_id==None)
 
-    print('-------Engine-------')
-    print(engine_code)
-    print(case_use)
-    print(case_interval)
-    print(case_capacity)
-    print('--------------------')
-    
-    with db.liqui_moly.Session() as session:
-        engine = session.query(db.liqui_moly.car.Engine).filter_by(car_id = car.id, code=engine_code).first()
-        if not engine:
-            engine = db.liqui_moly.car.Engine(car_id=car.id, code=engine_code, change_interval=f'{case_use}-{case_interval}', capacity=case_capacity)
-            session.add(engine)
-            session.commit()
-        else:
-            engine.change_interval = f'{case_use}-{case_interval}'
-            engine.capacity = case_capacity
-            session.commit()
+    if exclude_tire_rack_done_mapping == 'true':
+        query = query.filter(vehicle_model.tire_rack_id==None)
 
-    time.sleep(1)
+    if exclude_yahoo_done_mapping == 'true':
+        query = query.filter(vehicle_model.yahoo_id==None)
 
+    if order_by:
+        order_by_list = order_by.split(',')
+        for _order_by in order_by_list:
+            asc = True
 
+            if not _order_by:
+                continue
 
-def transmission_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
-    try:
-        title = panel.find_element(By.CLASS_NAME,'panel-title')
-
-    except Exception:
-        return
-
-
-
-    if 'Transmission' not in title.text:
-         return
-    
-    text = title.text
-
-    if 'Transmission,' in text:
-        text = text.replace('Transmission,','')
-
-    elif 'Transmission' in text:
-        text = text.replace('Transmission','')
-
-
-    transmission_code = text.strip()
-
-
-    case_use, case_interval, case_capacity = '', '',''
-
-    try:
-        case_use = panel.find_element(By.XPATH,'.//div[@class="case use"]').text
-    except Exception:
-        pass
-    try:
-        case_interval = panel.find_element(By.XPATH,'.//div[@class="case interval"]').text
-    except Exception:
-        pass
-    try:
-        case_capacity = panel.find_element(By.XPATH,'.//div[@class="case capacity"]').text
-    except Exception:
-        pass
-
-    print('-------Transmission-------')
-    print(transmission_code)
-    print(case_use)
-    print(case_interval)
-    print(case_capacity)
-    print('--------------------')
-    
-    with db.liqui_moly.Session() as session:
-        transmission = session.query(db.liqui_moly.car.Transmission).filter_by(car_id = car.id, code=transmission_code).first()
-        if not transmission:
-            transmission = db.liqui_moly.car.Transmission(car_id=car.id, code=transmission_code, change_interval=f'{case_use}-{case_interval}', capacity=case_capacity)
-            session.add(transmission)
-            session.commit()
-        else:
-            transmission.change_interval = f'{case_use}-{case_interval}'
-            transmission.capacity = case_capacity
-            session.commit()
-
-    time.sleep(1)
-
-
-
-def differential_processor(vehicle_brand, vehicle_model, vehicle_type, panel, car):
-    try:
-        title = panel.find_element(By.CLASS_NAME,'panel-title')
-
-    except Exception:
-        return
-
-
-
-    if 'Differential' not in title.text:
-         return
-    
-    text = title.text
-
-    if 'Differential,' in text:
-        text = text.replace('Differential,','')
-
-    elif 'Differential' in text:
-        text = text.replace('Differential','')
-
-
-    differential_code = text.strip()
-
-
-    case_use, case_interval, case_capacity = '', '',''
-
-    try:
-        case_use = panel.find_element(By.XPATH,'.//div[@class="case use"]').text
-    except Exception:
-        pass
-    try:
-        case_interval = panel.find_element(By.XPATH,'.//div[@class="case interval"]').text
-    except Exception:
-        pass
-    try:
-        case_capacity = panel.find_element(By.XPATH,'.//div[@class="case capacity"]').text
-    except Exception:
-        pass
-
-    print('-------Differential-------')
-    print(differential_code)
-    print(case_use)
-    print(case_interval)
-    print(case_capacity)
-    print('--------------------')
-    
-    with db.liqui_moly.Session() as session:
-        differential = session.query(db.liqui_moly.car.Differential).filter_by(car_id = car.id, code=differential_code).first()
-        if not differential:
-            differential = db.liqui_moly.car.Differential(car_id=car.id, code=differential_code, change_interval=f'{case_use}-{case_interval}', capacity=case_capacity)
-            session.add(differential)
-            session.commit()
-        else:
-            differential.change_interval = f'{case_use}-{case_interval}'
-            differential.capacity = case_capacity
-            session.commit()
-
-    time.sleep(1)
-
-
-
-def main():
-
-    while True:
-        try:
-            previous_make = None
-            previous_model = None
-            previous_sub_model = None
-            
-            with db.liqui_moly.Session() as session:
-                previous_car = session.query(db.liqui_moly.car.Car).order_by(db.liqui_moly.car.Car.updated_at.desc()).first()
-                if previous_car:
-                    previous_make, previous_model, previous_sub_model = previous_car.make, previous_car.model, previous_car.sub_model
-
-            browser = init_browser()
-
-            vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
-            vehicle_brands = ['','BMW (EU)', 'Audi (EU)', 'Ford (EU)', 'Hyundai (EU)', 'Honda (JAP)',
-                            'INFINITI (EU)', 'Jeep (EU)', 'Kia (EU)', 'Land Rover (EU)', 'Lexus (EU)', 'Maserati', 
-                            'Mazda (JAP)', 'Mercedes-Benz (EU)', 'Mitsubishi (JAP)', 'Nissan (EU)', 'Porsche (EU)', 
-                            'Skoda', 'Smart', 'Subaru (JAP)', 'Suzuki', 'Tesla (EU)', 'Tesla (USA)', 'Toyota (JAP)', 
-                            'Toyota (USA / CAN)','Volkswagen (VW) (EU)','Volvo (EU)','Volvo (USA / CAN)'
-                            ]
-            try:
-                i = vehicle_brands.index(previous_make) if previous_make else 1
-            except:
-                i = 1
-            previous_make = ''
-
-            for vehicle_brand in vehicle_brands[i:]:
+            if _order_by[0] == '-' :
                 
-                while True:
-                    try:
-                        vehicle_brand_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-brand"))
-                        vehicle_brand_select.select_by_visible_text(vehicle_brand)
-                        break
-                    except Exception as e:
-                        print(traceback.format_exc())
-                        time.sleep(5)
-                time.sleep(5)   
+                if len(_order_by)<=1:
+                    continue
+                asc = False
+                _order_by = _order_by[1:]
 
-                vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
-                vehicle_models = [op.text for op in vehicle_model_select.options]
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
 
-                try:
-                    j = vehicle_models.index(previous_model) if previous_model else 1
-                except:
-                    j = 1
-                previous_model = ''
 
-                for vehicle_model in vehicle_models[j:]:
+    return paginate(_db, query)
 
-                    while True:
-                        try:
-                            vehicle_model_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-model"))
-                            vehicle_model_select.select_by_visible_text(vehicle_model)
-                            break
-                        except Exception as e:
-                            print(traceback.format_exc())
-                            time.sleep(5)
-                    time.sleep(5)
 
-                    vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
-                    vehicle_types = [op.text for op in vehicle_type_select.options]
 
-                    try:
-                        k = vehicle_types.index(previous_sub_model) if previous_sub_model else 1
-                    except:
-                        k = 1
-                    previous_sub_model = ''
 
-                    for vehicle_type in vehicle_types[k:]:
 
-                        while True:
-                            try:
-                                vehicle_type_select = Select(browser.find_element(By.ID, "oww-vs-vehicle-vehicle-type"))
-                                vehicle_type_select.select_by_visible_text(vehicle_type)
+@app.get('/carlet/auto_data/vehicles', response_model=Page[AutoDataVehicleOut])
+def get_auto_data_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+    _db:db.auto_data.Session = Depends(get_auto_data_db), 
+                        id:int|str|None=None,
+                        make:str|None=None, 
+                        model:str|None=None, 
+                        sub_model:str|None=None, 
+                        start_of_production_year:int|str|None=None,
+                        end_of_production_year:int|str|None=None,
+                        keyword:str|None=None,
+                        order_by:str|None=None):    
+ 
 
-                                break
-                            except Exception as e:
-                                print(traceback.format_exc())
-                                time.sleep(5)
 
-                        with db.liqui_moly.Session() as session:
-                            session.expire_on_commit=False
+    car = aliased(db.auto_data.car.Car, name='car')
+    property = aliased(db.auto_data.car.Property, name='property')
+
+    query = select(
+        car.id, 
+        car.make,
+        car.model,
+        car.sub_model,
+        car.start_of_production_year,
+        car.end_of_production_year,
+        property.name.label('property_name'),
+        property.value.label('property_value')
+        ).join(property).filter(property.name.in_(['Number of gears and type of gearbox']))
+    
+    if id and id.isnumeric():
+        query = query.filter(car.id==int(id))
+    if make:
+        query = query.filter(car.make.ilike(f'%{make}%'))
+    if start_of_production_year and start_of_production_year.isnumeric():
+        query = query.filter(car.start_of_production_year>=int(start_of_production_year))
+    if end_of_production_year and end_of_production_year.isnumeric():
+        query = query.filter(car.end_of_production_year<int(end_of_production_year))
+    if model:
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.model.ilike(f'%{sub_string}%'))
+    if sub_model:
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.sub_model.ilike(f'%{sub_string}%'))
+    if keyword:
+        query = query.filter(or_(
+            car.make.ilike(f'%{keyword}%'), 
+            car.model.ilike(f'%{keyword}%'),
+            car.sub_model.ilike(f'%{keyword}%'),
+        ))
+
+
+    if order_by:
+        order_by_list = order_by.split(',')
+        for _order_by in order_by_list:
+            asc = True
+
+            if not _order_by:
+                continue
+
+            if _order_by[0] == '-' :
+                
+                if len(_order_by)<=1:
+                    continue
+                asc = False
+                _order_by = _order_by[1:]
+
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
+
+
+    print(query)
+    return paginate(_db, query)
+
+
+
+
+@app.get('/carlet/yahoo/vehicles', response_model=Page[YahooVehicleOut])
+def get_yahoo_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+    _db:db.local_carlet.Session = Depends(get_carlet_db), 
+                        id:int|str|None=None,
+                        make:str|None=None, 
+                        model:str|None=None, 
+                        sub_model:str|None=None, 
+                        keyword:str|None=None,
+                        hp:str|None=None,
+                        displacement:str|None=None,
+                        order_by:str|None=None):    
+ 
+
+
+    vehicle = aliased(db.local_carlet.models.Vehicle, name='vehicle')
+
+    query = select(
+        vehicle.id, 
+        vehicle.make,
+        vehicle.model,
+        vehicle.sub_model,
+        vehicle.output,
+        vehicle.displacement,
+        )
+    if id and id.isnumeric():
+        query = query.filter(vehicle.id==int(id))
+    if make:
+        query = query.filter(vehicle.make.ilike(f'%{make}%'))
+    
+    if model:
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle.model.ilike(f'%{sub_string}%'))
+    if sub_model:
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(vehicle.sub_model.ilike(f'%{sub_string}%'))
+    if keyword:
+        query = query.filter(or_(
+            vehicle.make.ilike(f'%{keyword}%'), 
+            vehicle.model.ilike(f'%{keyword}%'),
+            vehicle.sub_model.ilike(f'%{keyword}%'),
+        ))
+
+    if hp:
+        query = query.filter(vehicle.output.ilike(f'%{hp}%'))
+    if displacement:
+        query = query.filter(vehicle.displacement.ilike(f'%{displacement}%'))
+
+    if order_by:
+        order_by_list = order_by.split(',')
+        for _order_by in order_by_list:
+            asc = True
+
+            if not _order_by:
+                continue
+
+            if _order_by[0] == '-' :
+                
+                if len(_order_by)<=1:
+                    continue
+                asc = False
+                _order_by = _order_by[1:]
+
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
+
+
+
+    return paginate(_db, query)
+
+
+
+@app.get('/carlet/tire_rack/vehicles', response_model=Page[TireRackVehicleOut])
+def get_tire_rack_vehicles(current_user: Annotated[User, Depends(get_current_active_user)],
+    _db:db.tire_rack.Session = Depends(get_tire_rack_db), 
+                        id:str|int|None=None,
+                        make:str|None=None, 
+                        model:str|None=None, 
+                        sub_model:str|None=None, 
+                        start_of_production_year:str|int|None=None,
+                        end_of_production_year:str|int|None=None,
+                        keyword:str|None=None,
+                        order_by:str|None=None):    
+ 
+
+
+    car = aliased(db.tire_rack.car.Car, name='car')
+    # property = aliased(db.auto_data.car.Property, name='property')
+
+    query = select(
+        car.id, 
+        car.make,
+        car.model,
+        car.sub_model,
+        car.year
+        # car.start_of_perduction_year,
+        # car.end_of_perduction_year,
+        )
+    if id and id.isnumeric():
+        query = query.filter(car.id==int(id))
+    if make:
+        query = query.filter(car.make.ilike(f'%{make}%'))
+    if start_of_production_year and start_of_production_year.isnumeric():
+        query = query.filter(car.year>=start_of_production_year)
+    if end_of_production_year and end_of_production_year.isnumeric():
+        query = query.filter(car.year<end_of_production_year)
+    if model:
+        for sub_string in model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.model.ilike(f'%{sub_string}%'))
+    if sub_model:
+        for sub_string in sub_model.split(','):
+            if not sub_string:
+                continue
+            query = query.filter(car.sub_model.ilike(f'%{sub_string}%'))
+    if keyword:
+        query = query.filter(or_(
+            car.make.ilike(f'%{keyword}%'), 
+            car.model.ilike(f'%{keyword}%'),
+            car.sub_model.ilike(f'%{keyword}%'),
+        ))
+
+    if order_by:
+        order_by_list = order_by.split(',')
+        for _order_by in order_by_list:
+            asc = True
+
+            if not _order_by:
+                continue
+
+            if _order_by[0] == '-' :
+                
+                if len(_order_by)<=1:
+                    continue
+                asc = False
+                _order_by = _order_by[1:]
+
+            if asc:
+                query = query.order_by(text(f'{_order_by} ASC'))
+            else:
+                query = query.order_by(text(f'{_order_by} DESC'))
+
+    return paginate(_db, query)
+
+
+add_pagination(app)  # important! add pagination to your app
+
+
+class AutoDataVehicle(BaseModel):
+    auto_data_vehicle_id: int|str|None
+
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/mapping/auto_data")
+def update_carlet_vehicle_auto_data_id(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    carlet_vehicle_id: int, 
+    data: AutoDataVehicle):
+    
+    print(carlet_vehicle_id)
+    print(data.auto_data_vehicle_id)
+
+    with db.local_carlet.Session() as session:
+        session.expire_on_commit=False
                             
-                            car = session.query(db.liqui_moly.car.Car).filter_by(
-                                make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type).first()
-                            if not car:
-                                car = db.liqui_moly.car.Car(make=vehicle_brand, model=vehicle_model, sub_model=vehicle_type)
-                                session.add(car)
-                                session.commit()
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.auto_data_id = data.auto_data_vehicle_id if data.auto_data_vehicle_id else None
+        session.commit()
 
-                            session.expunge(car)
-                            db.liqui_moly.make_transient(car)
+    return 'ok'
 
-                            print('**Car**')
-                            print(vehicle_brand)
-                            print(vehicle_model)
-                            print(vehicle_type)
-                            print('*******')
 
-                        while True:
-                            try:
-                                reco_accordion = browser.find_element(By.ID, "reco-accordion")
-                                panels = reco_accordion.find_elements(By.XPATH,'./*')
-                                break
-                            except:
-                                time.sleep(5)
-                        time.sleep(5)
-                        
-                        for panel in panels:
+class TireRackVehicle(BaseModel):
+    tire_rack_vehicle_id: int|str|None
 
-                            try:
-                                heading = panel.find_element(By.XPATH,'.//div[@class="panel-heading collapsed"]')
-                                browser.execute_script("arguments[0].click();", heading)
-                            except Exception:
-                                pass
-                            time.sleep(1)
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/mapping/tire_rack")
+def update_carlet_vehicle_tire_rack_id(
+    current_user: Annotated[User, Depends(get_current_active_user)], 
+    carlet_vehicle_id: int, 
+    data: TireRackVehicle):
+
+    with db.local_carlet.Session() as session:
+        session.expire_on_commit=False
                             
-                            engine_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
-                            differential_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
-                            transmission_processor(vehicle_brand, vehicle_model, vehicle_type,panel, car)
-        except:
-            print(traceback.format_exc())
-            pass
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.tire_rack_id = data.tire_rack_vehicle_id if data.tire_rack_vehicle_id else None
+        session.commit()
+
+    return 'ok'
 
 
-if __name__ == "__main__":
 
-    main()
+class YahooVehicle(BaseModel):
+    yahoo_vehicle_id: int|str|None
+
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/mapping/yahoo")
+def update_carlet_vehicle_yahoo_id(
+    current_user: Annotated[User, Depends(get_current_active_user)], 
+    carlet_vehicle_id: int, 
+    data: YahooVehicle):
+    print(data)
+    with db.local_carlet.Session() as session:
+
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.yahoo_id = data.yahoo_vehicle_id if data.yahoo_vehicle_id else None
+        print(car)
+        print(car.yahoo_id)
+        session.commit()
+
+    return 'ok'
+
+
+class updateVehicleData(BaseModel):
+    hp: str|None
+
+@app.put("/carlet/vehicle/{carlet_vehicle_id}/update")
+def update_carlet_vehicle(
+    current_user: Annotated[User, Depends(get_current_active_user)], 
+    carlet_vehicle_id: int, 
+    data: updateVehicleData):
+
+    with db.local_carlet.Session() as session:
+
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+        car.hp = data.hp if data.hp else None
+        session.commit()
+
+    return 'ok'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @app.post("/vehicle")
+# def create_vehicle(car_data: Car):
+
+
+#     with db.tire_rack.Session() as session:
+#         session.expire_on_commit=False
+                            
+#         car = session.query(db.tire_rack.car.Car).filter_by(make=car_data.make, year=car_data.year, model=car_data.model, sub_model=car_data.additional).first()
+#         if not car:
+#             car = db.tire_rack.car.Car(make=car_data.make, year=car_data.year, model=car_data.model, sub_model=car_data.additional)
+#             session.add(car)
+#             session.commit()
+
+#         session.expunge(car)
+#         db.tire_rack.make_transient(car)
+
+#         print('**Car**')
+#         print(car.make)
+#         print(car.year)
+#         print(car.model)
+#         print(car.sub_model)
+#         print('*******')
+
+
+#     return {"make": car.make, "year": car.year, "model": car.model, "additional": car.sub_model}
+
+
+
+# @app.get("/vehicle/latest")
+# def get_latest_vehicle():
+
+#     with db.tire_rack.Session() as session:
+#         session.expire_on_commit=False
+
+#         previous_car = session.query(db.tire_rack.car.Car).order_by(db.tire_rack.car.Car.created_at.desc()).first()
+#         session.expunge(previous_car)
+#         db.tire_rack.make_transient(previous_car)
+
+#     if previous_car:
+#         return {"make": previous_car.make, "year": previous_car.year, "model": previous_car.model, "additional": previous_car.sub_model}
+    
+#     return {"make": '', "year": '', "model": '', "additional": ''}
+      
+
+
+
+# class Item(BaseModel):
+#     name: str
+#     price: float
+#     is_offer: Union[bool, None] = None
+
+
+# @app.put("/items/{item_id}")
+# def update_item(item_id: int, item: Item):
+#     return {"item_name": item.name, "item_id": item_id}
+
+
+# @app.get("/")
+# def read_root():
+#     return {"Hello": "World"}
+
+
+# @app.get("/items/{item_id}")
+# def read_item(item_id: int, q: Union[str, None] = None):
+#     return {"item_id": item_id, "q": q}
+
+
+
+
+# poetry run uvicorn main:app --reload
+
+# poetry run uvicorn main:app --host 0.0.0.0 --port 8000
+#http://127.0.0.1:8000/docs
+#http://127.0.0.1:8000/redoc
+
+
+
+
+
+# docker build -t yihsuehlin/carlet_api:latest -f Dockerfile . 
