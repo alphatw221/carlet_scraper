@@ -11,13 +11,9 @@ import os
 import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 class V1TokenHelper:
-
-    header_data = {
-        'alg':'RS256',
-        'typ':'JWT'
-    }
 
 #     {
 #   "typ": "JWT",
@@ -90,16 +86,25 @@ class V1TokenHelper:
     #     }
     #     return cls.__generate_token(payload_data, os.environ.get("SECRET_KEY",""))
        
+    def __sign_data(data, private_key_pem:bytes):
+        private_key = serialization.load_pem_private_key(
+            private_key_pem,
+            password=None,
+            backend=default_backend()
+        )
 
+        signature = private_key.sign(
+            data,
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+
+        return signature
+    
     @classmethod
     def validate_token(cls, token):
 
         try:
-
-            header, payload, signature  = token.split('.')   
-            header_data = json.loads(base64.urlsafe_b64decode(header+'=='))
-            if header_data!=cls.header_data:
-                return None, None
 
             decoded_token = jwt.decode(
                 token,
