@@ -11,6 +11,8 @@ from sqlalchemy.orm import aliased
 import lib
 import db
 
+from sqlalchemy.orm import selectinload
+
 from . import router
 
 
@@ -20,6 +22,9 @@ def get_auto_data_db():
     with db.auto_data.Session() as session:
         yield session
 
+class Property(BaseModel):
+    name: str
+    value: str
 
 class AutoDataVehicleOut(BaseModel):
     id:int
@@ -28,9 +33,9 @@ class AutoDataVehicleOut(BaseModel):
     start_of_production_year:int|None
     end_of_production_year:int|None
     sub_model: str
-    property_name:str|None
-    property_value:str|None
-    # properties: List[Property]
+    # property_name:str|None
+    # property_value:str|None
+    properties: List[Property]
 
 
 
@@ -54,6 +59,17 @@ def get_auto_data_vehicles(current_user: Annotated[lib.helper.auth_helper.User, 
     car = aliased(db.auto_data.car.Car, name='car')
     property = aliased(db.auto_data.car.Property, name='property')
 
+    # query = select(
+    #     car.id, 
+    #     car.make,
+    #     car.model,
+    #     car.sub_model,
+    #     car.start_of_production_year,
+    #     car.end_of_production_year,
+    #     property.name.label('property_name'),
+    #     property.value.label('property_value')
+    #     ).join(property).filter(property.name.in_(['Number of gears and type of gearbox']))
+    
     query = select(
         car.id, 
         car.make,
@@ -61,9 +77,7 @@ def get_auto_data_vehicles(current_user: Annotated[lib.helper.auth_helper.User, 
         car.sub_model,
         car.start_of_production_year,
         car.end_of_production_year,
-        property.name.label('property_name'),
-        property.value.label('property_value')
-        ).join(property).filter(property.name.in_(['Number of gears and type of gearbox']))
+        ).options(selectinload(db.auto_data.car.Car.properties))
     
     if id and id.isnumeric():
         query = query.filter(car.id==int(id))

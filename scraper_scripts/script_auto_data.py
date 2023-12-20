@@ -1,3 +1,7 @@
+import sys
+# setting path
+sys.path.append('../carlet_scraper')
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -156,12 +160,19 @@ def initVehicleBrowser(url):
 
     return vehicle_browser
 
+
+
 def main():
 
     while True:
         try:
-            target_makes = ['BMW', 'Audi', 'Mercedes-Benz', 'Porsche' ]
-            previous_make, previous_model_category, previous_model, previous_sub_model = '','','',''
+            target_makes = [
+                # 'BMW', 
+                # 'Audi', 
+                'Mercedes-Benz', 
+                # 'Porsche' 
+            ]
+            previous_make, previous_model_category, previous_model, previous_sub_model = 'Mercedes-Benz','A-class','Mercedes-Benz A-class (W176)',''
 
             # with db.auto_data.Session() as session:
             #     previous_car = session.query(db.auto_data.car.Car).filter(db.auto_data.car.Car.make.in_(target_makes)).order_by(db.auto_data.car.Car.updated_at.desc()).first()
@@ -276,22 +287,27 @@ def main():
                                 sub_model_link = sub_model.get('url')
 
                                 #re scrape vehicle which get different tire spec between front and rear side
+                                # with db.auto_data.Session() as session:
+                                #     car = session.query(db.auto_data.car.Car).join(db.auto_data.car.Property).filter(
+                                #         db.auto_data.car.Car.make==make_name,
+                                #         db.auto_data.car.Car.model_category==model_category_name,
+                                #         db.auto_data.car.Car.model==model_name,
+                                #         db.auto_data.car.Car.sub_model==sub_model_name,
+                                #         db.auto_data.car.Property.name=='Tire size',
+                                #         db.auto_data.car.Property.value.ilike('Front wheel tires')
+                                #     ).first()
+
+                                #     if not car:
+                                #         print('vehicle which get same tire spec between front and rear side')
+                                #         continue
+
+                                #     print('vehicle which get different tire spec between front and rear side')
                                 with db.auto_data.Session() as session:
-                                    car = session.query(db.auto_data.car.Car).join(db.auto_data.car.Property).filter(
-                                        db.auto_data.car.Car.make==make_name,
-                                        db.auto_data.car.Car.model_category==model_category_name,
-                                        db.auto_data.car.Car.model==model_name,
-                                        db.auto_data.car.Car.sub_model==sub_model_name,
-                                        db.auto_data.car.Property.name=='Tire size',
-                                        db.auto_data.car.Property.value.ilike('Front wheel tires')
-                                    ).first()
+                                    car = session.query(db.auto_data.car.Car).filter_by(make=make_name, model_category=model_category_name, model=model_name, sub_model=sub_model_name).first()
 
-                                    if not car:
-                                        print('vehicle which get same tire spec between front and rear side')
-                                        continue
-
-                                    print('vehicle which get different tire spec between front and rear side')
-
+                                if car:
+                                    print(f'{sub_model_name} already in database')
+                                    continue
 
                                 try:
                                     vehicle_browser = initVehicleBrowser((sub_model_link))

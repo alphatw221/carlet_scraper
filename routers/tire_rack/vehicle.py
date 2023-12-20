@@ -31,7 +31,7 @@ class TireRackVehicleOut(BaseModel):
 
 
 
-@router.get('/carlet/tire_rack/vehicles', response_model=Page[TireRackVehicleOut])
+@router.get('/vehicles', response_model=Page[TireRackVehicleOut])
 def get_tire_rack_vehicles(current_user: Annotated[lib.helper.auth_helper.User, Depends(lib.helper.auth_helper.get_current_active_user)],
     _db:db.tire_rack.Session = Depends(get_tire_rack_db), 
                         id:str|int|None=None,

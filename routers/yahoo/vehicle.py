@@ -34,7 +34,7 @@ class YahooVehicleOut(BaseModel):
 
 
 
-@router.get('/carlet/yahoo/vehicles', response_model=Page[YahooVehicleOut])
+@router.get('/vehicles', response_model=Page[YahooVehicleOut])
 def get_yahoo_vehicles(current_user: Annotated[lib.helper.auth_helper.User, Depends(lib.helper.auth_helper.get_current_active_user)],
     _db:db.local_carlet.Session = Depends(get_carlet_db), 
                         id:int|str|None=None,
