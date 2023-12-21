@@ -25,7 +25,8 @@ def get_auto_data_db():
 class Property(BaseModel):
     name: str
     value: str
-
+    class Config:
+        orm_mode = True
 class AutoDataVehicleOut(BaseModel):
     id:int
     make: str
@@ -37,6 +38,8 @@ class AutoDataVehicleOut(BaseModel):
     # property_value:str|None
     properties: List[Property]
 
+    class Config:
+        orm_mode = True
 
 
 
@@ -56,8 +59,8 @@ def get_auto_data_vehicles(current_user: Annotated[lib.helper.auth_helper.User, 
  
 
 
-    car = aliased(db.auto_data.car.Car, name='car')
-    property = aliased(db.auto_data.car.Property, name='property')
+    # car = aliased(db.auto_data.car.Car, name='car')
+    # property = aliased(db.auto_data.car.Property, name='property')
 
     # query = select(
     #     car.id, 
@@ -69,40 +72,51 @@ def get_auto_data_vehicles(current_user: Annotated[lib.helper.auth_helper.User, 
     #     property.name.label('property_name'),
     #     property.value.label('property_value')
     #     ).join(property).filter(property.name.in_(['Number of gears and type of gearbox']))
-    
-    query = select(
-        car.id, 
-        car.make,
-        car.model,
-        car.sub_model,
-        car.start_of_production_year,
-        car.end_of_production_year,
-        ).options(selectinload(db.auto_data.car.Car.properties))
+    cars = _db.query(db.auto_data.car.Car).options(selectinload(db.auto_data.car.Car.properties))
+
+    # query = select(
+    #     car.id, 
+    #     car.make,
+    #     car.model,
+    #     car.sub_model,
+    #     car.start_of_production_year,
+    #     car.end_of_production_year,
+    #     )
     
     if id and id.isnumeric():
-        query = query.filter(car.id==int(id))
+    #     query = query.filter(car.id==int(id))
+        cars = cars.filter(db.auto_data.car.Car.id==int(id))
     if make:
-        query = query.filter(car.make.ilike(f'%{make}%'))
+    #     query = query.filter(car.make.ilike(f'%{make}%'))
+        cars = cars.filter(db.auto_data.car.Car.make.ilike(f'%{make}%'))
     if start_of_production_year and start_of_production_year.isnumeric():
-        query = query.filter(car.start_of_production_year>=int(start_of_production_year))
+    #     query = query.filter(car.start_of_production_year>=int(start_of_production_year))
+        cars = cars.filter(db.auto_data.car.Car.start_of_production_year>=int(start_of_production_year))
+
     if end_of_production_year and end_of_production_year.isnumeric():
-        query = query.filter(car.end_of_production_year<int(end_of_production_year))
+    #     query = query.filter(car.end_of_production_year<int(end_of_production_year))
+        cars = cars.filter(db.auto_data.car.Car.end_of_production_year<int(end_of_production_year))
+
     if model:
         for sub_string in model.split(','):
             if not sub_string:
                 continue
-            query = query.filter(car.model.ilike(f'%{sub_string}%'))
+    #         query = query.filter(car.model.ilike(f'%{sub_string}%'))
+            cars = cars.filter(db.auto_data.car.Car.model.ilike(f'%{sub_string}%'))
+
     if sub_model:
         for sub_string in sub_model.split(','):
             if not sub_string:
                 continue
-            query = query.filter(car.sub_model.ilike(f'%{sub_string}%'))
-    if keyword:
-        query = query.filter(or_(
-            car.make.ilike(f'%{keyword}%'), 
-            car.model.ilike(f'%{keyword}%'),
-            car.sub_model.ilike(f'%{keyword}%'),
-        ))
+    #         query = query.filter(car.sub_model.ilike(f'%{sub_string}%'))
+            cars = cars.filter(db.auto_data.car.Car.sub_model.ilike(f'%{sub_string}%'))
+
+    # if keyword:
+    #     query = query.filter(or_(
+    #         car.make.ilike(f'%{keyword}%'), 
+    #         car.model.ilike(f'%{keyword}%'),
+    #         car.sub_model.ilike(f'%{keyword}%'),
+    #     ))
 
 
     if order_by:
@@ -121,12 +135,15 @@ def get_auto_data_vehicles(current_user: Annotated[lib.helper.auth_helper.User, 
                 _order_by = _order_by[1:]
 
             if asc:
-                query = query.order_by(text(f'{_order_by} ASC'))
+                # query = query.order_by(text(f'{_order_by} ASC'))
+                cars = cars.order_by(text(f'car_{_order_by} ASC'))
+
             else:
-                query = query.order_by(text(f'{_order_by} DESC'))
+                # query = query.order_by(text(f'{_order_by} DESC'))
+                cars = cars.order_by(text(f'car_{_order_by} DESC'))
+
+    return paginate(cars)
 
 
-    print(query)
-    return paginate(_db, query)
 
 
