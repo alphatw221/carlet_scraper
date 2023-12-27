@@ -1,7 +1,7 @@
 from typing import List
 
 from sqlalchemy import BigInteger, Column, DateTime, Float, ForeignKeyConstraint, Index, String, text
-from sqlalchemy.dialects.mysql import BIGINT, CHAR, INTEGER, TINYINT, VARCHAR, YEAR
+from sqlalchemy.dialects.mysql import BIGINT, CHAR, INTEGER, TINYINT, VARCHAR, YEAR, BOOLEAN
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 from sqlalchemy.orm.base import Mapped
 
@@ -82,7 +82,7 @@ class VehicleModel(Base):
     auto_data_id = mapped_column(INTEGER, nullable=True, comment='Auto Data ID')
     tire_rack_id = mapped_column(INTEGER, nullable=True, comment='Tire Rack ID')
     #     yahoo_id = mapped_column(BIGINT, nullable=True, comment='Yahoo ID')
-
+    mark = mapped_column(BOOLEAN, nullable=False, default=False, server_default=text('false'), comment='For marking purposes')
 
 
 
