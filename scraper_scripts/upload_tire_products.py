@@ -6,6 +6,7 @@ import requests
 import openpyxl
 import re
 import db
+from PIL import Image
 
 def login():
     account = 'celine'
@@ -46,6 +47,7 @@ def create_price_table():
                     'price_column':2,
                     'price':{},
                     'cost':{},
+                    'image':Image.open('bridgestone_ecopia.jpeg'),
                     'description':\
                         '優越磨耗壽命，特殊化學結構減少滾動阻力，維持節能性更增加31%磨耗壽命。\n'\
                         +'四大特點：\n'\
@@ -94,6 +96,7 @@ def create_price_table():
                     'price_column':4,
                     'price':{},
                     'cost':{},
+                    'image':Image.open('bridgestone_alenza.jpeg'),
                     'description':
                         'Lexus LS/UX/ES 高級轎房車原廠配胎\n'\
                         +'1)有感的駕乘舒適性\n'\
@@ -130,6 +133,7 @@ def create_price_table():
                     'price_column':6,
                     'price':{},
                     'cost':{},
+                    'image':Image.open('bridgestone_potenza.jpeg'),
                     'description':\
                         '藍寶堅尼Huracán STO、瑪莎拉蒂MC20、BMW 8系列原廠指定配胎。\n'\
                         +'卓越乾地剎車-\n'\
@@ -176,6 +180,7 @@ def create_price_table():
                     'price_column':8,
                     'price':{},
                     'cost':{},
+                    'image':Image.open('bridgestone_turanza.jpeg'),
                     'description':\
                         '優越舒適性能-\n'\
                         +'新花紋平衡輪胎和道路接觸面，減少震動幅度。\n'\
@@ -216,6 +221,7 @@ def create_price_table():
                     'price':{},
                     'cost':{},
                     'description':'特殊系列規格輪胎',
+                    'image':None,
                     'purchase_notes':\
                         '注意事項：\n'\
                         +'\n'\
@@ -348,6 +354,19 @@ def create_price_table():
     workbook.close()
     return brands
 
+def get_product(token, product_id):
+    url = f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}'
+    response = requests.get(url, headers={'Authorization':f'Bearer {token}'})
+    if response.status_code == 200:
+        data = response.json()
+        entity = data.get('pager',{}).get('entity',[])
+        return entity
+    else:
+        print("索取失敗")
+        print("錯誤碼:", response.status_code)
+        print("錯誤內容:", response.text)
+        raise Exception()
+
 def check_product_exists(token, store, name):
     url = 'https://service.gama.carlet.com.tw/api/admin/store/partss'
     response = requests.get(url, params={'store':store, 'name':name}, headers={'Authorization':f'Bearer {token}'})
@@ -404,6 +423,15 @@ def add_product_image(token, product_id, image):
         print("錯誤碼:", response.status_code)
         print("錯誤內容:", response.text)
         raise Exception()
+    
+def add_product_image_if_not_exists(token, product_id, image):
+
+    product = get_product(token, product_id)
+    if not product.get('photos',[]):
+        add_product_image(image)
+    else:
+        print(f'商品{product_id}已存在照片')
+
 def update_product_cateogry(token, product_id):
     url=f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}/categories'
     response = requests.put(url, json=[{
@@ -483,49 +511,15 @@ def extract_tire_sizes(input_string):
     return [reformat(match) for match in matches]
 
 
-product_variants = [
-    {'name':'前輪2顆', 'factor':2, 'hours':'1'},
-    {'name':'後輪2顆', 'factor':2, 'hours':'1'},
-    {'name':'全車4顆', 'factor':4, 'hours':'2'}
-]
+
+
 
 def get_tire_product_name(brand_name, serie_name, spec, variant_name):
     return f'{brand_name}{serie_name}-{spec}({variant_name})'
 
-def main():
-    token = login()
-    tire_price_data = create_price_table()
-    store = 'Carlet輪胎館'
 
-
-    with db.local_carlet.Session() as session:
-        # vehicles= session.query(db.local_carlet.models.Vehicle).filter(db.local_carlet.models.Vehicle.make.in_(target_makes)).order_by(db.local_carlet.models.Vehicle.id.asc()).limit(50)
-        vehicles= session.query(db.local_carlet.models.VehicleModel).filter(
-            db.local_carlet.models.VehicleModel.auto_data_id!=None, 
-            db.local_carlet.models.VehicleModel.auto_data_id!=-1,
-            db.local_carlet.models.VehicleModel.mark==False,
-            )\
-        .yield_per(100)
-        # .limit(5)
-        
-        
-
-                              
-    for vehicle in vehicles:
-        print(vehicle.id)
-
-        with db.auto_data.Session() as session:
-            property = session.query(db.auto_data.car.Property).filter(db.auto_data.car.Property.car_id==vehicle.auto_data_id, db.auto_data.car.Property.name=='Tires size').first()
-        
-        if not property:
-            continue
-
-        if 'Front wheel tires' in property.value:
-            #前後輪分開的車款先略過
-            continue
-
-        specs = extract_tire_sizes(property.value)
-
+def upload_compactable_product(token:str, tire_price_data:list, store:str, vehicle:db.local_carlet.models.VehicleModel, specs:list, product_variants:list):
+    
         for brand in tire_price_data:
             brand_name = brand.get('name')
             series = brand.get('series')
@@ -540,6 +534,7 @@ def main():
                 for spec in specs:
                     
                     if spec not in price_dict or spec not in cost_dict:
+                        print(f'{serie_name} 系列 沒有 {spec} 型號')
                         continue
                     
                     for product_variant in product_variants:
@@ -557,6 +552,127 @@ def main():
                             update_product_cateogry(token, product_id)
 
                         add_compatible_vehicle(token, product_id, vehicle.id)
+
+def upload_all_tires():
+    token = login()
+    tire_price_data = create_price_table()
+    store = 'Carlet輪胎館'
+
+    product_variants = [
+        {'name':'前輪2顆', 'factor':2, 'hours':'1'},
+        {'name':'後輪2顆', 'factor':2, 'hours':'1'},
+        {'name':'全車4顆', 'factor':4, 'hours':'2'}
+    ]
+
+    for brand in tire_price_data:
+        brand_name = brand.get('name')
+        series = brand.get('series')
+
+        for serie in series:
+            serie_name = serie.get('name')
+            price_dict = serie.get('price')
+            cost_dict = serie.get('cost')
+            description = serie.get('description')
+            purchase_notes = serie.get('purchase_notes')
+            image = serie.get('image')
+
+           
+            for spec, price in price_dict.items():
+
+                if spec not in cost_dict:
+                    raise Exception()
+                
+                for product_variant in product_variants:
+                    variant_name = product_variant.get('name')
+                    factor = product_variant.get('factor')
+                    hours = product_variant.get('hours')
+                    tire_product_name = get_tire_product_name(brand_name, serie_name, spec, variant_name)
+                    cost = cost_dict.get(spec)
+
+                    price = price * factor
+                    cost = cost * factor
+
+                    exists, product_id = check_product_exists(token, store, tire_product_name)
+
+
+                    if not exists:
+                        success, product_id = create_product(token, store, tire_product_name, hours, price, cost, description, purchase_notes,)
+                        update_product_cateogry(token, product_id)
+                    
+                    if image:
+                        add_product_image_if_not_exists(token, product_id, image)
+
+
+
+def main():
+    token = login()
+    tire_price_data = create_price_table()
+    store = 'Carlet輪胎館'
+
+    product_variants = [
+        {'name':'前輪2顆', 'factor':2, 'hours':'1'},
+        {'name':'後輪2顆', 'factor':2, 'hours':'1'},
+        {'name':'全車4顆', 'factor':4, 'hours':'2'}
+    ]
+
+
+    with db.local_carlet.Session() as session:
+        # vehicles= session.query(db.local_carlet.models.Vehicle).filter(db.local_carlet.models.Vehicle.make.in_(target_makes)).order_by(db.local_carlet.models.Vehicle.id.asc()).limit(50)
+        vehicles= session.query(db.local_carlet.models.VehicleModel).filter(
+            db.local_carlet.models.VehicleModel.auto_data_id!=None, 
+            db.local_carlet.models.VehicleModel.auto_data_id!=-1,
+            db.local_carlet.models.VehicleModel.mark==False,
+            db.local_carlet.models.VehicleModel.mark3!=True,
+            )\
+        .yield_per(100)
+        # .limit(5)
+        
+        
+
+                              
+    for vehicle in vehicles:
+        print(vehicle.id)
+
+        with db.auto_data.Session() as session:
+            property = session.query(db.auto_data.car.Property).filter(db.auto_data.car.Property.car_id==vehicle.auto_data_id, db.auto_data.car.Property.name=='Tires size').first()
+        
+        if not property:
+            with db.local_carlet.Session() as session:
+                session.query(db.local_carlet.models.VehicleModel).filter_by(id=vehicle.id).update({'mark3': True})
+                session.commit()
+            continue
+
+        if 'Rear wheel tires' in property.value:
+            
+            with db.local_carlet.Session() as session:
+                session.query(db.local_carlet.models.VehicleModel).filter_by(id=vehicle.id).update({'mark2': True})
+                session.commit()
+            
+            front_tires, rear_tires = property.value.split('Rear wheel tires')
+            front_specs = extract_tire_sizes(front_tires)
+            rear_specs = extract_tire_sizes(rear_tires)
+
+            upload_compactable_product(
+                token, 
+                tire_price_data, 
+                store, 
+                vehicle, 
+                front_specs, 
+                [{'name':'前輪2顆', 'factor':2, 'hours':'1'}]
+            )
+            upload_compactable_product(
+                token, 
+                tire_price_data, 
+                store, 
+                vehicle, 
+                rear_specs, 
+                [{'name':'後輪2顆', 'factor':2, 'hours':'1'}]           
+            )
+
+        
+        else:
+            specs = extract_tire_sizes(property.value)
+            upload_compactable_product(token, tire_price_data, store, vehicle, specs, product_variants)
 
         with db.local_carlet.Session() as session:
             session.query(db.local_carlet.models.VehicleModel).filter_by(id=vehicle.id).update({'mark': True})

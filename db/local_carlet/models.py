@@ -83,6 +83,8 @@ class VehicleModel(Base):
     tire_rack_id = mapped_column(INTEGER, nullable=True, comment='Tire Rack ID')
     #     yahoo_id = mapped_column(BIGINT, nullable=True, comment='Yahoo ID')
     mark = mapped_column(BOOLEAN, nullable=False, default=False, server_default=text('false'), comment='For marking purposes')
+    mark2 = mapped_column(BOOLEAN, nullable=False, default=False, server_default=text('false'), comment='For marking purposes 2')
+    mark3 = mapped_column(BOOLEAN, nullable=False, default=False, server_default=text('false'), comment='For marking purposes 3')
 
 
 
