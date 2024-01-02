@@ -47,7 +47,7 @@ def create_price_table():
                     'price_column':2,
                     'price':{},
                     'cost':{},
-                    'image':Image.open('bridgestone_ecopia.jpeg'),
+                    'image_name':'bridgestone_ecopia.jpeg',
                     'description':\
                         '優越磨耗壽命，特殊化學結構減少滾動阻力，維持節能性更增加31%磨耗壽命。\n'\
                         +'四大特點：\n'\
@@ -96,7 +96,7 @@ def create_price_table():
                     'price_column':4,
                     'price':{},
                     'cost':{},
-                    'image':Image.open('bridgestone_alenza.jpeg'),
+                    'image_name':'bridgestone_alenza.jpeg',
                     'description':
                         'Lexus LS/UX/ES 高級轎房車原廠配胎\n'\
                         +'1)有感的駕乘舒適性\n'\
@@ -133,7 +133,7 @@ def create_price_table():
                     'price_column':6,
                     'price':{},
                     'cost':{},
-                    'image':Image.open('bridgestone_potenza.jpeg'),
+                    'image_name':'bridgestone_potenza.jpeg',
                     'description':\
                         '藍寶堅尼Huracán STO、瑪莎拉蒂MC20、BMW 8系列原廠指定配胎。\n'\
                         +'卓越乾地剎車-\n'\
@@ -180,7 +180,7 @@ def create_price_table():
                     'price_column':8,
                     'price':{},
                     'cost':{},
-                    'image':Image.open('bridgestone_turanza.jpeg'),
+                    'image_name':'bridgestone_turanza.jpeg',
                     'description':\
                         '優越舒適性能-\n'\
                         +'新花紋平衡輪胎和道路接觸面，減少震動幅度。\n'\
@@ -221,7 +221,7 @@ def create_price_table():
                     'price':{},
                     'cost':{},
                     'description':'特殊系列規格輪胎',
-                    'image':None,
+                    'image_name':'bridgestone_special.jpeg',
                     'purchase_notes':\
                         '注意事項：\n'\
                         +'\n'\
@@ -359,7 +359,7 @@ def get_product(token, product_id):
     response = requests.get(url, headers={'Authorization':f'Bearer {token}'})
     if response.status_code == 200:
         data = response.json()
-        entity = data.get('pager',{}).get('entity',[])
+        entity = data.get('entity')
         return entity
     else:
         print("索取失敗")
@@ -413,22 +413,25 @@ def create_product(token, store, name, hours, price, cost, description='其他�
         print("錯誤內容:", response.text)
         raise Exception()
 
-def add_product_image(token, product_id, image):
+def add_product_image(token, product_id, image_name):
     url = f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}/image'
-    response = requests.post(url, data={'file':image}, headers={'Authorization':f'Bearer {token}'})
-    if response.status_code == 200:
-        print('新增圖片成功')
-    else:
-        print("新增圖片失敗")
-        print("錯誤碼:", response.status_code)
-        print("錯誤內容:", response.text)
-        raise Exception()
+
+    with open(image_name, "rb") as file:
+        print(file)
+        response = requests.post(url, headers={'Authorization':f'Bearer {token}'}, files = {"file": file})
+        if response.status_code == 200:
+            print('新增圖片成功')
+        else:
+            print("新增圖片失敗")
+            print("錯誤碼:", response.status_code)
+            print("錯誤內容:", response.text)
+            raise Exception()
     
-def add_product_image_if_not_exists(token, product_id, image):
+def add_product_image_if_not_exists(token, product_id, image_name):
 
     product = get_product(token, product_id)
     if not product.get('photos',[]):
-        add_product_image(image)
+        add_product_image(token, product_id, image_name)
     else:
         print(f'商品{product_id}已存在照片')
 
@@ -574,7 +577,7 @@ def upload_all_tires():
             cost_dict = serie.get('cost')
             description = serie.get('description')
             purchase_notes = serie.get('purchase_notes')
-            image = serie.get('image')
+            image_name = serie.get('image_name')
 
            
             for spec, price in price_dict.items():
@@ -599,8 +602,8 @@ def upload_all_tires():
                         success, product_id = create_product(token, store, tire_product_name, hours, price, cost, description, purchase_notes,)
                         update_product_cateogry(token, product_id)
                     
-                    if image:
-                        add_product_image_if_not_exists(token, product_id, image)
+                    if image_name:
+                        add_product_image_if_not_exists(token, product_id, image_name)
 
 
 
@@ -679,4 +682,5 @@ def main():
             session.commit()
 
 if __name__ == "__main__":
-    main()
+    # main()
+    upload_all_tires()
