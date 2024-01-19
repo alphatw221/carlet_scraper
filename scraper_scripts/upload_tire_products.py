@@ -47,7 +47,7 @@ def create_price_table():
                     'price_column':2,
                     'price':{},
                     'cost':{},
-                    'image_name':'bridgestone_ecopia.jpeg',
+                    'image_paths':['images/bridgestone_ecopia.png'],
                     'description':\
                         '優越磨耗壽命，特殊化學結構減少滾動阻力，維持節能性更增加31%磨耗壽命。\n'\
                         +'四大特點：\n'\
@@ -96,7 +96,7 @@ def create_price_table():
                     'price_column':4,
                     'price':{},
                     'cost':{},
-                    'image_name':'bridgestone_alenza.jpeg',
+                    'image_paths':['images/bridgestone_alenza.png'],
                     'description':
                         'Lexus LS/UX/ES 高級轎房車原廠配胎\n'\
                         +'1)有感的駕乘舒適性\n'\
@@ -133,7 +133,7 @@ def create_price_table():
                     'price_column':6,
                     'price':{},
                     'cost':{},
-                    'image_name':'bridgestone_potenza.jpeg',
+                    'image_paths':['images/bridgestone_potenza.png'],
                     'description':\
                         '藍寶堅尼Huracán STO、瑪莎拉蒂MC20、BMW 8系列原廠指定配胎。\n'\
                         +'卓越乾地剎車-\n'\
@@ -180,7 +180,7 @@ def create_price_table():
                     'price_column':8,
                     'price':{},
                     'cost':{},
-                    'image_name':'bridgestone_turanza.jpeg',
+                    'image_paths':['images/bridgestone_turanza.png'],
                     'description':\
                         '優越舒適性能-\n'\
                         +'新花紋平衡輪胎和道路接觸面，減少震動幅度。\n'\
@@ -221,7 +221,7 @@ def create_price_table():
                     'price':{},
                     'cost':{},
                     'description':'特殊系列規格輪胎',
-                    'image_name':'bridgestone_special.jpeg',
+                    'image_paths':['images/bridgestone_special.png'],
                     'purchase_notes':\
                         '注意事項：\n'\
                         +'\n'\
@@ -326,7 +326,7 @@ def create_price_table():
         }
     ]
 
-    excel_file_path = 'tires.xlsx'
+    excel_file_path = 'spread_sheets/tires.xlsx'
     workbook = openpyxl.load_workbook(excel_file_path)
 
     for brand in brands:
@@ -354,7 +354,7 @@ def create_price_table():
     workbook.close()
     return brands
 
-def get_product(token, product_id):
+def get_product(token, product_id)->dict:
     url = f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}'
     response = requests.get(url, headers={'Authorization':f'Bearer {token}'})
     if response.status_code == 200:
@@ -406,34 +406,50 @@ def create_product(token, store, name, hours, price, cost, description='其他�
     if response.status_code == 200:
         print(f'新增產品成功 : {name}')
         data = response.json()
-        return True, data.get('entity',{}).get('id')
+        return True, data.get('entity',{})
     else:
         print("新增產品失敗")
         print("錯誤碼:", response.status_code)
         print("錯誤內容:", response.text)
         raise Exception()
+    
+def delete_product_image(token, product_id, image_uid):
+    url=f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}/image/{image_uid}'
+    response = requests.delete(url, headers={'Authorization':f'Bearer {token}'})
+    if response.status_code == 200:
+        print('刪除圖片成功')
+    else:
+        print("刪除圖片失敗")
+        print("錯誤碼:", response.status_code)
+        print("錯誤內容:", response.text)
+        raise Exception()
 
-def add_product_image(token, product_id, image_name):
+def delete_all_product_image(token, product_entity:dict=None, product_id=None):
+    if product_id:
+        product_entity:dict = get_product(token, product_id)
+    for photo in product_entity.get('photos',[]):
+        delete_product_image(token, product_entity.get('id'), photo.get('uid'))
+
+def add_product_image(token, product_id, image_path):
     url = f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}/image'
 
-    with open(image_name, "rb") as file:
-        print(file)
+    with open(image_path, "rb") as file:
         response = requests.post(url, headers={'Authorization':f'Bearer {token}'}, files = {"file": file})
-        if response.status_code == 200:
-            print('新增圖片成功')
-        else:
-            print("新增圖片失敗")
-            print("錯誤碼:", response.status_code)
-            print("錯誤內容:", response.text)
-            raise Exception()
-    
-def add_product_image_if_not_exists(token, product_id, image_name):
-
-    product = get_product(token, product_id)
-    if not product.get('photos',[]):
-        add_product_image(token, product_id, image_name)
+    if response.status_code == 200:
+        print('新增圖片成功')
     else:
-        print(f'商品{product_id}已存在照片')
+        print("新增圖片失敗")
+        print("錯誤碼:", response.status_code)
+        print("錯誤內容:", response.text)
+        raise Exception()
+    
+# def add_product_image_if_not_exists(token, product_id, image_name):
+
+#     product = get_product(token, product_id)
+#     if not product.get('photos',[]):
+#         add_product_image(token, product_id, image_name)
+#     else:
+#         print(f'商品{product_id}已存在照片')
 
 def update_product_cateogry(token, product_id):
     url=f'https://service.gama.carlet.com.tw/api/admin/store/parts/{product_id}/categories'
@@ -551,21 +567,27 @@ def upload_compactable_product(token:str, tire_price_data:list, store:str, vehic
                         exists, product_id = check_product_exists(token, store, tire_product_name)
 
                         if not exists:
-                            success, product_id = create_product(token, store, tire_product_name, hours, price, cost, description, purchase_notes,)
-                            update_product_cateogry(token, product_id)
+                            success, product_entity = create_product(token, store, tire_product_name, hours, price, cost, description, purchase_notes,)
+                            update_product_cateogry(token, product_entity.get('id'))
 
                         add_compatible_vehicle(token, product_id, vehicle.id)
+
+
+
+
 
 def upload_all_tires():
     token = login()
     tire_price_data = create_price_table()
     store = 'Carlet輪胎館'
 
+
     product_variants = [
-        {'name':'前輪2顆', 'factor':2, 'hours':'1'},
-        {'name':'後輪2顆', 'factor':2, 'hours':'1'},
-        {'name':'全車4顆', 'factor':4, 'hours':'2'}
+        {'name':'前輪2顆', 'factor':2, 'hours':'1', 'image_paths':['images/front_tires.png']},
+        {'name':'後輪2顆', 'factor':2, 'hours':'1', 'image_paths':['images/rear_tires.png']},
+        {'name':'全車4顆', 'factor':4, 'hours':'2', 'image_paths':['images/all_tires.png']}
     ]
+
 
     for brand in tire_price_data:
         brand_name = brand.get('name')
@@ -577,7 +599,7 @@ def upload_all_tires():
             cost_dict = serie.get('cost')
             description = serie.get('description')
             purchase_notes = serie.get('purchase_notes')
-            image_name = serie.get('image_name')
+            image_paths = serie.get('image_paths')
 
            
             for spec, price in price_dict.items():
@@ -591,6 +613,9 @@ def upload_all_tires():
                     hours = product_variant.get('hours')
                     tire_product_name = get_tire_product_name(brand_name, serie_name, spec, variant_name)
                     cost = cost_dict.get(spec)
+                    variant_image_paths = product_variant.get('image_paths')
+
+                    all_image_paths = variant_image_paths + image_paths
 
                     price = price * factor
                     cost = cost * factor
@@ -599,11 +624,16 @@ def upload_all_tires():
 
 
                     if not exists:
-                        success, product_id = create_product(token, store, tire_product_name, hours, price, cost, description, purchase_notes,)
+                        success, product_entity = create_product(token, store, tire_product_name, hours, price, cost, description, purchase_notes,)
+                        product_id = product_entity.get('id')
                         update_product_cateogry(token, product_id)
-                    
-                    if image_name:
-                        add_product_image_if_not_exists(token, product_id, image_name)
+                    else:
+                        delete_all_product_image(token, product_id=product_id)
+
+                    if all_image_paths:
+                        for image_path in all_image_paths: 
+                            add_product_image(token, product_id, image_path)
+
 
 
 
@@ -613,9 +643,9 @@ def main():
     store = 'Carlet輪胎館'
 
     product_variants = [
-        {'name':'前輪2顆', 'factor':2, 'hours':'1'},
-        {'name':'後輪2顆', 'factor':2, 'hours':'1'},
-        {'name':'全車4顆', 'factor':4, 'hours':'2'}
+        {'name':'前輪2顆', 'factor':2, 'hours':'1', 'image_paths':['images/front_tires.png']},
+        {'name':'後輪2顆', 'factor':2, 'hours':'1', 'image_paths':['images/rear_tires.png']},
+        {'name':'全車4顆', 'factor':4, 'hours':'2', 'image_paths':['images/all_tires.png']}
     ]
 
 

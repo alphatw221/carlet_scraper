@@ -26,19 +26,27 @@ class Make(BaseModel):
     name:str|None
 class CarletVehicleOut(BaseModel):
     id: int|None
+    make_id:int|None
     make: Make|None
     make_name: str = ""  # 新增 make_name 的欄位
 
     name: str|None
     year: int|None
     name_variant: str|None
+    trim_level: str|None
+    fuel: str|None
+    displacement: int|None
     transmission:str|None
+    size: str|None
     engine: str|None
     chassis: str|None
     hp: str|None
     auto_data_id: int|None
     tire_rack_id: int|None
     yahoo_id: str|None
+
+    supported: int|None
+    is_show: int|None
 
 
     class Config:
@@ -284,6 +292,20 @@ def update_carlet_vehicle_yahoo_id(
 
 class updateVehicleData(BaseModel):
     hp: str|None
+    chassis: str|None
+    displacement: int|None
+    engine: str|None
+    fuel: str|None
+    make_id: int|None
+    name_variant: str|None
+    name: str|None
+    size: str|None
+    transmission: str|None
+    trim_level: str|None
+    year: int|None
+
+
+
 
 @router.put("/{carlet_vehicle_id}/update")
 def update_carlet_vehicle(
@@ -298,10 +320,57 @@ def update_carlet_vehicle(
         if not car:
             raise HTTPException(status_code=404, detail="Vehidle Not Found")
         
-        car.hp = data.hp if data.hp else None
+        session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).update(dict(data))
         session.commit()
 
     return 'ok'
 
 
+class createVehicleData(BaseModel):
+    hp: str|None
+    chassis: str|None
+    displacement: int|None
+    engine: str|None
+    fuel: str
+    make_id: int
+    name: str
+    name_variant: str
+    size: str
+    transmission: str
+    trim_level: str|None
+    year: int
+    supported: int
+    is_show: int
 
+
+
+@router.post("/create")
+def create_carlet_vehicle(
+    current_user: Annotated[lib.helper.auth_helper.User, Depends(lib.helper.auth_helper.get_current_active_user)], 
+    data: createVehicleData):
+
+    with db.local_carlet.Session() as session:
+        vehicle_model = db.local_carlet.models.VehicleModel(**dict(data))
+
+        session.add(vehicle_model)
+        session.commit()
+
+      
+    return 'ok'
+
+@router.delete("/{carlet_vehicle_id}/delete")
+def delete_carlet_vehicle(
+    current_user: Annotated[lib.helper.auth_helper.User, Depends(lib.helper.auth_helper.get_current_active_user)],carlet_vehicle_id ):
+
+    with db.local_carlet.Session() as session:
+
+                            
+        car = session.query(db.local_carlet.models.VehicleModel).filter_by(id=carlet_vehicle_id).first()
+        if not car:
+            raise HTTPException(status_code=404, detail="Vehidle Not Found")
+        
+
+        session.delete(car)
+        session.commit()
+      
+    return 'ok'
